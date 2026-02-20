@@ -88,6 +88,7 @@ export default function App() {
 
   /**
    * Utilisation de l'API Pollinations (Enterprise/Authenticated)
+   * Endpoint conforme à la documentation : https://gen.pollinations.ai/image/{prompt}
    */
   const handleGenerateImage = async () => {
     if (!prompt.trim()) {
@@ -105,15 +106,18 @@ export default function App() {
       const encodedPrompt = encodeURIComponent(prompt + ", professional commercial photography, high quality, centered composition, clean simple background");
       const seed = Math.floor(Math.random() * 1000000);
       
-      // Utilisation du endpoint gen.pollinations.ai
-      const imageUrl = `https://gen.pollinations.ai/prompt/${encodedPrompt}?width=1024&height=1024&seed=${seed}&nologo=true&model=flux`;
+      // Mise à jour de l'URL vers le chemin /image/ préconisé
+      const imageUrl = `https://gen.pollinations.ai/image/${encodedPrompt}?width=1024&height=1024&seed=${seed}&nologo=true&model=flux`;
 
-      // Ajout du header Authorization si la clé est présente
+      // Envoi de la requête avec l'en-tête d'autorisation
       const response = await fetch(imageUrl, {
         headers: apiKey ? { 'Authorization': `Bearer ${apiKey}` } : {}
       });
 
-      if (!response.ok) throw new Error("Le service de génération ne répond pas.");
+      if (!response.ok) {
+        if (response.status === 401) throw new Error("Clé API invalide ou expirée.");
+        throw new Error("Le service de génération ne répond pas.");
+      }
 
       const blob = await response.blob();
       const reader = new FileReader();
@@ -125,7 +129,7 @@ export default function App() {
       reader.readAsDataURL(blob);
 
     } catch (err) {
-      setError("Désolé, la génération a échoué. Veuillez vérifier votre clé API ou réessayer plus tard.");
+      setError(err.message || "Désolé, la génération a échoué. Veuillez vérifier votre configuration.");
       setIsGenerating(false);
     }
   };
