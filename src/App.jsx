@@ -95,7 +95,7 @@ export default function App() {
     setIsGenerating(true);
     setError('');
     
-    const apiKey = "";
+    const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
 
     const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/imagen-4.0-generate-001:predict?key=${apiKey}`;
     
