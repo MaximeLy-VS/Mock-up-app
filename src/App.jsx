@@ -95,9 +95,20 @@ export default function App() {
     setIsGenerating(true);
     setError('');
     
-    // Note pour GitHub Pages : remplacez la ligne ci-dessous par : 
-    // const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
-    const apiKey = "";
+    // Pour votre projet Vite local, utilisez : const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
+    // Nous utilisons cette syntaxe pour éviter les erreurs de compilation dans cet aperçu
+    let apiKey = "";
+    try {
+      apiKey = import.meta.env.VITE_GEMINI_API_KEY;
+    } catch (e) {
+      apiKey = "";
+    }
+
+    if (!apiKey) {
+      setError("La clé API n'est pas configurée. Vérifiez vos GitHub Secrets.");
+      setIsGenerating(false);
+      return;
+    }
 
     const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/imagen-4.0-generate-001:predict?key=${apiKey}`;
     
@@ -111,7 +122,7 @@ export default function App() {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            instances: { prompt: prompt + ", photorealistic, highly detailed" },
+            instances: { prompt: prompt + ", photorealistic, highly detailed, centered composition" },
             parameters: { sampleCount: 1 }
           })
         });
@@ -121,7 +132,10 @@ export default function App() {
         retries++;
       }
 
-      if (!response.ok) throw new Error("Erreur lors de la génération de l'image.");
+      if (!response.ok) {
+        const errData = await response.json();
+        throw new Error(errData.error?.message || "Erreur API");
+      }
 
       const data = await response.json();
       const base64Image = `data:image/png;base64,${data.predictions[0].bytesBase64Encoded}`;
@@ -129,7 +143,7 @@ export default function App() {
       setActiveTab('convert'); 
 
     } catch (err) {
-      setError("Désolé, la génération a échoué. Veuillez vérifier votre clé API.");
+      setError(`Erreur: ${err.message}. Vérifiez la validité de votre clé API.`);
     } finally {
       setIsGenerating(false);
     }
@@ -151,12 +165,14 @@ export default function App() {
 
         ctx.clearRect(0, 0, canvas.width, canvas.height);
 
+        // Cercle gris décalé en arrière-plan
         ctx.fillStyle = '#E5E7EB';
         ctx.beginPath();
         ctx.arc(outputHeight / 2 + offset, outputHeight / 2, outputHeight / 2, 0, Math.PI * 2);
         ctx.fill();
         ctx.closePath();
 
+        // Image au premier plan avec masque circulaire
         ctx.save();
         ctx.beginPath();
         ctx.arc(outputHeight / 2, outputHeight / 2, outputHeight / 2, 0, Math.PI * 2);
@@ -192,10 +208,10 @@ export default function App() {
   }, [sourceImage]);
 
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center p-6 font-sans">
+    <div className="min-h-screen bg-gray-50 flex items-center justify-center p-6 font-sans text-gray-900">
       <div className="max-w-4xl w-full bg-white rounded-2xl shadow-xl overflow-hidden flex flex-col md:flex-row min-h-[500px]">
         
-        <div className="w-full md:w-1/2 bg-gray-100 p-8 border-r border-gray-200 flex flex-col">
+        <div className="w-full md:w-1/2 bg-gray-50 p-8 border-r border-gray-200 flex flex-col">
           <h1 className="text-2xl font-bold text-gray-800 mb-6 flex items-center gap-2">
             <ImageIcon className="text-indigo-600" />
             Studio Mock-up
@@ -246,7 +262,7 @@ export default function App() {
               <textarea
                 value={prompt}
                 onChange={(e) => setPrompt(e.target.value)}
-                placeholder="Ex: Une femme d'affaires souriante devant un tableau couvert de post-its colorés..."
+                placeholder="Ex: Un chef cuisinier préparant un plat gastronomique..."
                 className="w-full h-32 p-3 border border-gray-300 rounded-xl mb-4 focus:ring-2 focus:ring-indigo-500 focus:border-transparent resize-none"
               />
               <button
@@ -257,7 +273,7 @@ export default function App() {
                 {isGenerating ? (
                   <>
                     <Loader2 className="animate-spin" size={18} />
-                    Création en cours...
+                    Génération en cours...
                   </>
                 ) : (
                   <>
@@ -266,15 +282,14 @@ export default function App() {
                   </>
                 )}
               </button>
-              {error && <p className="text-red-500 text-sm mt-3 text-center">{error}</p>}
+              {error && <p className="text-red-500 text-sm mt-3 text-center bg-red-50 p-2 rounded border border-red-100">{error}</p>}
             </div>
           )}
         </div>
 
         <div className="w-full md:w-1/2 p-8 flex flex-col items-center justify-center bg-white">
-          
           <div 
-            className="mb-6 w-full max-w-[340px] aspect-[340/300] flex items-center justify-center bg-white border border-gray-200 rounded-xl relative overflow-hidden shadow-inner" 
+            className="mb-6 w-full max-w-[340px] aspect-[340/300] flex items-center justify-center bg-white border border-gray-100 rounded-xl relative overflow-hidden shadow-inner" 
             style={{ backgroundImage: 'radial-gradient(#d1d5db 1px, transparent 1px)', backgroundSize: '16px 16px' }}
           >
             {processedImageUrl ? (
@@ -311,7 +326,6 @@ export default function App() {
           </a>
 
           <canvas ref={canvasRef} className="hidden" />
-
         </div>
       </div>
     </div>
