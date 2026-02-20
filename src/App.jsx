@@ -58,7 +58,7 @@ const setDpiInPngBase64 = (base64Image, dpi) => {
     }
     return 'data:image/png;base64,' + btoa(newBase64);
   } catch (error) {
-    console.error("Erreur lors de l'injection du DPI:", error);
+    console.error("Erreur injection DPI:", error);
     return base64Image;
   }
 };
@@ -95,60 +95,71 @@ export default function App() {
     setIsGenerating(true);
     setError('');
     
-    // Pour votre projet Vite local, utilisez : const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
+    // IMPORTANT : Sur GitHub Pages, cette variable est injectée par le Workflow d'Actions
     let apiKey = "";
     try {
-      apiKey = import.meta.env.VITE_GEMINI_API_KEY;
+      apiKey = import.meta.env.VITE_GEMINI_API_KEY || "";
     } catch (e) {
       apiKey = "";
     }
 
     if (!apiKey) {
-      setError("La clé API n'est pas configurée. Vérifiez vos GitHub Secrets.");
+      setError("Clé API manquante. Assurez-vous d'avoir configuré VITE_GEMINI_API_KEY dans les Secrets GitHub.");
       setIsGenerating(false);
       return;
     }
 
-    // Utilisation de imagen-3.0 qui est plus accessible pour les comptes gratuits
-    const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-001:predict?key=${apiKey}`;
+    // On utilise imagen-4.0 ou 3.0 selon les permissions de votre compte
+    const model = "imagen-3.0-generate-001"; 
+    const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${model}:predict?key=${apiKey}`;
     
     try {
       let response;
       let retries = 0;
-      const delays = [1000, 2000, 4000, 8000, 16000];
+      const delays = [1000, 2000, 4000, 8000];
 
-      while (retries < 5) {
+      while (retries < 4) {
         response = await fetch(endpoint, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            instances: [{ prompt: prompt + ", photorealistic, high quality, centered composition" }],
-            parameters: { sampleCount: 1 }
+            // Format strict requis par l'API Imagen via Generative Language
+            instances: {
+              prompt: prompt + ", photorealistic style, professional photography, centered composition, high resolution"
+            },
+            parameters: {
+              sampleCount: 1
+            }
           })
         });
 
         if (response.ok) break;
         
-        const errorBody = await response.json().catch(() => ({}));
-        if (response.status === 403 || response.status === 400) {
-          throw new Error(errorBody.error?.message || "Accès refusé ou requête invalide.");
-        }
+        const errorData = await response.json().catch(() => ({}));
+        if (response.status === 404) throw new Error(`Le modèle ${model} est introuvable. Vérifiez si ce modèle est activé pour votre clé API.`);
+        if (response.status === 403) throw new Error("Accès refusé. Vérifiez la facturation ou les restrictions régionales de votre projet Google Cloud.");
         
         await new Promise(r => setTimeout(r, delays[retries]));
         retries++;
       }
 
       if (!response.ok) {
-        throw new Error("Impossible de générer l'image après plusieurs tentatives.");
+        const finalError = await response.json().catch(() => ({}));
+        throw new Error(finalError.error?.message || "Erreur lors de la génération.");
       }
 
       const data = await response.json();
-      const base64Image = `data:image/png;base64,${data.predictions[0].bytesBase64Encoded}`;
-      setSourceImage(base64Image);
-      setActiveTab('convert'); 
+      
+      if (data.predictions && data.predictions[0]?.bytesBase64Encoded) {
+        const base64Image = `data:image/png;base64,${data.predictions[0].bytesBase64Encoded}`;
+        setSourceImage(base64Image);
+        setActiveTab('convert'); 
+      } else {
+        throw new Error("L'API n'a pas renvoyé d'image valide.");
+      }
 
     } catch (err) {
-      setError(`Erreur: ${err.message}`);
+      setError(err.message);
       console.error("Détails de l'erreur:", err);
     } finally {
       setIsGenerating(false);
@@ -162,180 +173,143 @@ export default function App() {
       const img = new Image();
       
       img.onload = () => {
-        const outputHeight = 300;
-        const offset = 40; 
-        const outputWidth = outputHeight + offset; 
+        const h = 300;
+        const off = 40; 
+        const w = h + off; 
         
-        canvas.width = outputWidth;
-        canvas.height = outputHeight;
+        canvas.width = w;
+        canvas.height = h;
+        ctx.clearRect(0, 0, w, h);
 
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-        // Cercle gris décalé en arrière-plan
+        // Cercle gris décalé
         ctx.fillStyle = '#E5E7EB';
         ctx.beginPath();
-        ctx.arc(outputHeight / 2 + offset, outputHeight / 2, outputHeight / 2, 0, Math.PI * 2);
+        ctx.arc(h/2 + off, h/2, h/2, 0, Math.PI * 2);
         ctx.fill();
-        ctx.closePath();
 
-        // Image au premier plan avec masque circulaire
+        // Image avec masque
         ctx.save();
         ctx.beginPath();
-        ctx.arc(outputHeight / 2, outputHeight / 2, outputHeight / 2, 0, Math.PI * 2);
+        ctx.arc(h/2, h/2, h/2, 0, Math.PI * 2);
         ctx.clip(); 
 
-        const imgRatio = img.width / img.height;
-        const targetSize = outputHeight;
-        let drawW = targetSize;
-        let drawH = targetSize;
-        let drawX = 0;
-        let drawY = 0;
+        const ratio = img.width / img.height;
+        let dW = h, dH = h, dX = 0, dY = 0;
+        if (ratio < 1) { dH = h / ratio; dY = (h - dH) / 2; }
+        else { dW = h * ratio; dX = (h - dW) / 2; }
 
-        if (imgRatio < 1) { 
-          drawH = targetSize / imgRatio;
-          drawY = (targetSize - drawH) / 2;
-        } else { 
-          drawW = targetSize * imgRatio;
-          drawX = (targetSize - drawW) / 2;
-        }
-
-        ctx.drawImage(img, drawX, drawY, drawW, drawH);
+        ctx.drawImage(img, dX, dY, dW, dH);
         ctx.restore(); 
 
-        const rawDataUrl = canvas.toDataURL('image/png');
-        const finalDataUrlWithDpi = setDpiInPngBase64(rawDataUrl, 90);
-        
-        setProcessedImageUrl(finalDataUrlWithDpi);
+        const raw = canvas.toDataURL('image/png');
+        setProcessedImageUrl(setDpiInPngBase64(raw, 90));
       };
       img.src = sourceImage;
-    } else {
-      setProcessedImageUrl(null);
     }
   }, [sourceImage]);
 
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center p-6 font-sans text-gray-900">
-      <div className="max-w-4xl w-full bg-white rounded-2xl shadow-xl overflow-hidden flex flex-col md:flex-row min-h-[500px]">
+    <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4 font-sans text-slate-900">
+      <div className="max-w-4xl w-full bg-white rounded-3xl shadow-2xl overflow-hidden flex flex-col md:flex-row border border-slate-100">
         
-        <div className="w-full md:w-1/2 bg-gray-50 p-8 border-r border-gray-200 flex flex-col">
-          <h1 className="text-2xl font-bold text-gray-800 mb-6 flex items-center gap-2">
-            <ImageIcon className="text-indigo-600" />
-            Studio Mock-up
-          </h1>
+        <div className="w-full md:w-1/2 bg-slate-50/50 p-8 flex flex-col border-b md:border-b-0 md:border-r border-slate-200">
+          <header className="mb-8">
+            <div className="flex items-center gap-3 mb-2">
+              <div className="p-2 bg-indigo-600 rounded-lg shadow-lg">
+                <ImageIcon className="text-white" size={24} />
+              </div>
+              <h1 className="text-xl font-bold tracking-tight">Studio Mock-up</h1>
+            </div>
+            <p className="text-slate-500 text-sm">Convertisseur & Générateur d'illustrations.</p>
+          </header>
 
-          <div className="flex bg-gray-200 rounded-lg p-1 mb-8">
+          <div className="flex bg-slate-200/50 p-1 rounded-xl mb-8">
             <button
               onClick={() => setActiveTab('convert')}
-              className={`flex-1 py-2 text-sm font-medium rounded-md flex items-center justify-center gap-2 transition-colors ${activeTab === 'convert' ? 'bg-white shadow-sm text-gray-800' : 'text-gray-500 hover:text-gray-700'}`}
+              className={`flex-1 py-2.5 text-sm font-semibold rounded-lg flex items-center justify-center gap-2 transition-all ${activeTab === 'convert' ? 'bg-white shadow-sm text-indigo-600' : 'text-slate-600 hover:text-slate-800'}`}
             >
-              <UploadCloud size={16} /> Convertisseur
+              <UploadCloud size={18} /> Import
             </button>
             <button
               onClick={() => setActiveTab('generate')}
-              className={`flex-1 py-2 text-sm font-medium rounded-md flex items-center justify-center gap-2 transition-colors ${activeTab === 'generate' ? 'bg-white shadow-sm text-gray-800' : 'text-gray-500 hover:text-gray-700'}`}
+              className={`flex-1 py-2.5 text-sm font-semibold rounded-lg flex items-center justify-center gap-2 transition-all ${activeTab === 'generate' ? 'bg-white shadow-sm text-indigo-600' : 'text-slate-600 hover:text-slate-800'}`}
             >
-              <Wand2 size={16} /> Générateur
+              <Wand2 size={18} /> IA
             </button>
           </div>
 
-          {activeTab === 'convert' && (
-            <div className="flex-1 flex flex-col justify-center">
+          <div className="flex-1 flex flex-col min-h-[300px]">
+            {activeTab === 'convert' ? (
               <div 
                 onClick={() => fileInputRef.current?.click()}
-                className="border-2 border-dashed border-gray-300 rounded-xl p-8 text-center cursor-pointer hover:bg-gray-50 transition-colors flex flex-col items-center justify-center group"
+                className="flex-1 border-2 border-dashed border-slate-300 rounded-2xl p-8 text-center cursor-pointer hover:border-indigo-400 hover:bg-indigo-50/30 transition-all flex flex-col items-center justify-center group"
               >
-                <div className="bg-indigo-100 p-3 rounded-full mb-4 group-hover:scale-110 transition-transform">
-                  <UploadCloud className="text-indigo-600" size={32} />
-                </div>
-                <p className="text-gray-700 font-medium mb-1">Cliquez pour importer une image</p>
-                <p className="text-gray-400 text-sm">JPG, PNG (max 5MB)</p>
-                <input 
-                  type="file" 
-                  ref={fileInputRef} 
-                  onChange={handleFileUpload} 
-                  accept="image/*" 
-                  className="hidden" 
-                />
+                <UploadCloud className="text-slate-400 group-hover:text-indigo-500 mb-4 transition-colors" size={48} />
+                <p className="text-slate-700 font-semibold">Cliquer pour importer</p>
+                <p className="text-slate-400 text-xs mt-1">PNG, JPG jusqu'à 5MB</p>
+                <input type="file" ref={fileInputRef} onChange={handleFileUpload} accept="image/*" className="hidden" />
               </div>
-            </div>
-          )}
-
-          {activeTab === 'generate' && (
-            <div className="flex-1 flex flex-col">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Thématique / Description de l'image
-              </label>
-              <textarea
-                value={prompt}
-                onChange={(e) => setPrompt(e.target.value)}
-                placeholder="Ex: Un chef cuisinier préparant un plat gastronomique..."
-                className="w-full h-32 p-3 border border-gray-300 rounded-xl mb-4 focus:ring-2 focus:ring-indigo-500 focus:border-transparent resize-none"
-              />
-              <button
-                onClick={handleGenerateImage}
-                disabled={isGenerating || !prompt.trim()}
-                className="w-full bg-indigo-600 text-white font-medium py-3 rounded-xl hover:bg-indigo-700 transition-colors flex items-center justify-center gap-2 disabled:bg-indigo-400 disabled:cursor-not-allowed"
-              >
-                {isGenerating ? (
-                  <>
-                    <Loader2 className="animate-spin" size={18} />
-                    Génération en cours...
-                  </>
-                ) : (
-                  <>
-                    <Wand2 size={18} />
-                    Générer l'illustration
-                  </>
-                )}
-              </button>
-              {error && (
-                <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg">
-                  <p className="text-red-600 text-xs font-medium leading-relaxed">
-                    {error}
-                  </p>
-                </div>
-              )}
-            </div>
-          )}
+            ) : (
+              <div className="space-y-4">
+                <textarea
+                  value={prompt}
+                  onChange={(e) => setPrompt(e.target.value)}
+                  placeholder="Ex: Une équipe travaillant dans un bureau moderne avec des post-its..."
+                  className="w-full h-40 p-4 border border-slate-200 rounded-2xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent resize-none text-sm bg-white"
+                />
+                <button
+                  onClick={handleGenerateImage}
+                  disabled={isGenerating || !prompt.trim()}
+                  className="w-full bg-indigo-600 text-white font-bold py-4 rounded-2xl hover:bg-indigo-700 transition-all flex items-center justify-center gap-3 disabled:bg-slate-300 shadow-lg shadow-indigo-100"
+                >
+                  {isGenerating ? <Loader2 className="animate-spin" size={20} /> : <Wand2 size={20} />}
+                  Générer l'illustration
+                </button>
+              </div>
+            )}
+            
+            {error && (
+              <div className="mt-4 p-4 bg-red-50 border border-red-100 rounded-xl">
+                <p className="text-red-600 text-[11px] font-medium leading-relaxed italic">{error}</p>
+              </div>
+            )}
+          </div>
         </div>
 
-        <div className="w-full md:w-1/2 p-8 flex flex-col items-center justify-center bg-white">
+        <div className="w-full md:w-1/2 p-8 flex flex-col items-center justify-center">
           <div 
-            className="mb-6 w-full max-w-[340px] aspect-[340/300] flex items-center justify-center bg-white border border-gray-100 rounded-xl relative overflow-hidden shadow-inner" 
-            style={{ backgroundImage: 'radial-gradient(#d1d5db 1px, transparent 1px)', backgroundSize: '16px 16px' }}
+            className="mb-8 w-full max-w-[340px] aspect-[340/300] flex items-center justify-center bg-slate-50 border border-slate-100 rounded-3xl relative overflow-hidden" 
+            style={{ backgroundImage: 'radial-gradient(#cbd5e1 1px, transparent 1px)', backgroundSize: '20px 20px' }}
           >
             {processedImageUrl ? (
-              <img 
-                src={processedImageUrl} 
-                alt="Résultat mock-up" 
-                className="w-full h-full object-contain"
-              />
+              <img src={processedImageUrl} alt="Preview" className="w-full h-full object-contain" />
             ) : (
-              <div className="text-center p-6 bg-white/80 rounded-full">
-                <ImageIcon className="text-gray-300 mx-auto mb-2" size={48} />
-                <p className="text-gray-400 text-sm">L'aperçu apparaîtra ici</p>
+              <div className="text-center opacity-20">
+                <ImageIcon className="mx-auto mb-2" size={64} />
+                <p className="text-sm font-medium">Votre visuel ici</p>
               </div>
             )}
           </div>
 
-          <div className="text-center mb-8">
-            <h3 className="text-lg font-semibold text-gray-800">Résultat Final</h3>
-            <p className="text-sm text-gray-500">Format : 340x300px • Résolution : 90 DPI</p>
-          </div>
+          <div className="w-full max-w-[300px] space-y-6">
+            <div className="text-center">
+              <span className="inline-block px-3 py-1 bg-indigo-100 text-indigo-700 text-[10px] font-bold uppercase rounded-full mb-2 tracking-tighter">Fichier finalisé</span>
+              <p className="text-[11px] text-slate-400">340x300px • 90 DPI • PNG Transparent</p>
+            </div>
 
-          <a
-            href={processedImageUrl || '#'}
-            download="mockup-illustration.png"
-            className={`w-full max-w-[300px] py-3 px-4 rounded-xl font-medium flex items-center justify-center gap-2 transition-all ${
-              processedImageUrl 
-                ? 'bg-green-600 hover:bg-green-700 text-white shadow-md hover:shadow-lg' 
-                : 'bg-gray-100 text-gray-400 cursor-not-allowed'
-            }`}
-            onClick={(e) => !processedImageUrl && e.preventDefault()}
-          >
-            <Download size={18} />
-            Télécharger (.png)
-          </a>
+            <a
+              href={processedImageUrl || '#'}
+              download="mockup-illustration.png"
+              className={`w-full py-4 rounded-2xl font-bold flex items-center justify-center gap-3 transition-all ${
+                processedImageUrl 
+                  ? 'bg-emerald-500 hover:bg-emerald-600 text-white shadow-lg' 
+                  : 'bg-slate-100 text-slate-400 cursor-not-allowed'
+              }`}
+              onClick={(e) => !processedImageUrl && e.preventDefault()}
+            >
+              <Download size={20} /> Télécharger
+            </a>
+          </div>
 
           <canvas ref={canvasRef} className="hidden" />
         </div>
