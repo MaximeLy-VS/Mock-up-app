@@ -96,7 +96,6 @@ export default function App() {
     setError('');
     
     // Pour votre projet Vite local, utilisez : const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
-    // Nous utilisons cette syntaxe pour éviter les erreurs de compilation dans cet aperçu
     let apiKey = "";
     try {
       apiKey = import.meta.env.VITE_GEMINI_API_KEY;
@@ -110,7 +109,8 @@ export default function App() {
       return;
     }
 
-    const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/imagen-4.0-generate-001:predict?key=${apiKey}`;
+    // Utilisation de imagen-3.0 qui est plus accessible pour les comptes gratuits
+    const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-001:predict?key=${apiKey}`;
     
     try {
       let response;
@@ -122,19 +122,24 @@ export default function App() {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            instances: { prompt: prompt + ", photorealistic, highly detailed, centered composition" },
+            instances: [{ prompt: prompt + ", photorealistic, high quality, centered composition" }],
             parameters: { sampleCount: 1 }
           })
         });
 
         if (response.ok) break;
+        
+        const errorBody = await response.json().catch(() => ({}));
+        if (response.status === 403 || response.status === 400) {
+          throw new Error(errorBody.error?.message || "Accès refusé ou requête invalide.");
+        }
+        
         await new Promise(r => setTimeout(r, delays[retries]));
         retries++;
       }
 
       if (!response.ok) {
-        const errData = await response.json();
-        throw new Error(errData.error?.message || "Erreur API");
+        throw new Error("Impossible de générer l'image après plusieurs tentatives.");
       }
 
       const data = await response.json();
@@ -143,7 +148,8 @@ export default function App() {
       setActiveTab('convert'); 
 
     } catch (err) {
-      setError(`Erreur: ${err.message}. Vérifiez la validité de votre clé API.`);
+      setError(`Erreur: ${err.message}`);
+      console.error("Détails de l'erreur:", err);
     } finally {
       setIsGenerating(false);
     }
@@ -282,7 +288,13 @@ export default function App() {
                   </>
                 )}
               </button>
-              {error && <p className="text-red-500 text-sm mt-3 text-center bg-red-50 p-2 rounded border border-red-100">{error}</p>}
+              {error && (
+                <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+                  <p className="text-red-600 text-xs font-medium leading-relaxed">
+                    {error}
+                  </p>
+                </div>
+              )}
             </div>
           )}
         </div>
