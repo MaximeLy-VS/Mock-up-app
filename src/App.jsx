@@ -87,8 +87,7 @@ export default function App() {
   };
 
   /**
-   * Utilisation de Pollinations.ai
-   * Avantages : Gratuit, pas de clé API, très rapide pour les tests.
+   * Utilisation de l'API Pollinations (Enterprise/Authenticated)
    */
   const handleGenerateImage = async () => {
     if (!prompt.trim()) {
@@ -100,16 +99,22 @@ export default function App() {
     setError('');
     
     try {
-      // Construction de l'URL de génération (Pollinations accepte les paramètres en URL)
-      const encodedPrompt = encodeURIComponent(prompt + ", professional photography, high resolution, centered, clean background");
+      // Récupération de la clé API Pollinations via Vite
+      const apiKey = import.meta.env.VITE_POLLINATIONS_API_KEY;
+
+      const encodedPrompt = encodeURIComponent(prompt + ", professional commercial photography, high quality, centered composition, clean simple background");
       const seed = Math.floor(Math.random() * 1000000);
-      const imageUrl = `https://image.pollinations.ai/prompt/${encodedPrompt}?width=1024&height=1024&seed=${seed}&nologo=true&model=flux`;
+      
+      // Utilisation du endpoint gen.pollinations.ai
+      const imageUrl = `https://gen.pollinations.ai/prompt/${encodedPrompt}?width=1024&height=1024&seed=${seed}&nologo=true&model=flux`;
 
-      // On vérifie que l'image est bien générée en essayant de la charger
-      const response = await fetch(imageUrl);
-      if (!response.ok) throw new Error("Le service de génération est temporairement indisponible.");
+      // Ajout du header Authorization si la clé est présente
+      const response = await fetch(imageUrl, {
+        headers: apiKey ? { 'Authorization': `Bearer ${apiKey}` } : {}
+      });
 
-      // On convertit en Blob puis en Base64 pour rester compatible avec notre pipeline de DPI
+      if (!response.ok) throw new Error("Le service de génération ne répond pas.");
+
       const blob = await response.blob();
       const reader = new FileReader();
       reader.onloadend = () => {
@@ -120,7 +125,7 @@ export default function App() {
       reader.readAsDataURL(blob);
 
     } catch (err) {
-      setError("Désolé, la génération a échoué. Réessayez dans quelques instants.");
+      setError("Désolé, la génération a échoué. Veuillez vérifier votre clé API ou réessayer plus tard.");
       setIsGenerating(false);
     }
   };
@@ -130,7 +135,7 @@ export default function App() {
       const canvas = canvasRef.current;
       const ctx = canvas.getContext('2d');
       const img = new Image();
-      img.crossOrigin = "anonymous"; // Crucial pour les images provenant d'une URL externe
+      img.crossOrigin = "anonymous"; 
       
       img.onload = () => {
         const h = 300;
@@ -141,13 +146,11 @@ export default function App() {
         canvas.height = h;
         ctx.clearRect(0, 0, w, h);
 
-        // Cercle gris décalé
         ctx.fillStyle = '#F3F4F6';
         ctx.beginPath();
         ctx.arc(h/2 + off, h/2, h/2, 0, Math.PI * 2);
         ctx.fill();
 
-        // Image avec masque
         ctx.save();
         ctx.beginPath();
         ctx.arc(h/2, h/2, h/2, 0, Math.PI * 2);
@@ -170,116 +173,116 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] flex items-center justify-center p-4 font-sans text-slate-900">
-      <div className="max-w-4xl w-full bg-white rounded-[2rem] shadow-2xl shadow-slate-200/50 overflow-hidden flex flex-col md:flex-row border border-slate-100">
+      <div className="max-w-4xl w-full bg-white rounded-[2.5rem] shadow-2xl shadow-indigo-100 overflow-hidden flex flex-col md:flex-row border border-slate-100">
         
-        {/* Panneau Gauche */}
-        <div className="w-full md:w-1/2 bg-slate-50/50 p-8 flex flex-col border-b md:border-b-0 md:border-r border-slate-100">
-          <header className="mb-8">
-            <div className="flex items-center gap-3 mb-2">
-              <div className="p-2.5 bg-indigo-600 rounded-2xl shadow-lg shadow-indigo-100">
-                <ImageIcon className="text-white" size={22} />
+        <div className="w-full md:w-1/2 bg-slate-50/50 p-10 flex flex-col border-b md:border-b-0 md:border-r border-slate-100">
+          <header className="mb-10">
+            <div className="flex items-center gap-4 mb-3">
+              <div className="p-3 bg-indigo-600 rounded-2xl shadow-xl shadow-indigo-200">
+                <ImageIcon className="text-white" size={24} />
               </div>
-              <h1 className="text-xl font-extrabold tracking-tight text-slate-800">Studio Mock-up</h1>
+              <div>
+                <h1 className="text-2xl font-black tracking-tight text-slate-800">Studio Mock-up</h1>
+                <p className="text-slate-400 text-[10px] font-bold uppercase tracking-[0.2em]">Illustration Engine v3</p>
+              </div>
             </div>
-            <p className="text-slate-400 text-xs font-medium uppercase tracking-widest">Illustration Designer v2</p>
           </header>
 
-          <div className="flex bg-slate-200/50 p-1 rounded-2xl mb-8">
+          <div className="flex bg-slate-200/50 p-1.5 rounded-2xl mb-10">
             <button
               onClick={() => setActiveTab('convert')}
-              className={`flex-1 py-3 text-sm font-bold rounded-xl flex items-center justify-center gap-2 transition-all ${activeTab === 'convert' ? 'bg-white shadow-sm text-indigo-600' : 'text-slate-500 hover:text-slate-700'}`}
+              className={`flex-1 py-3 text-sm font-bold rounded-xl flex items-center justify-center gap-2 transition-all ${activeTab === 'convert' ? 'bg-white shadow-md text-indigo-600' : 'text-slate-500 hover:text-slate-700'}`}
             >
               <UploadCloud size={18} /> Import
             </button>
             <button
               onClick={() => setActiveTab('generate')}
-              className={`flex-1 py-3 text-sm font-bold rounded-xl flex items-center justify-center gap-2 transition-all ${activeTab === 'generate' ? 'bg-white shadow-sm text-indigo-600' : 'text-slate-600 hover:text-slate-700'}`}
+              className={`flex-1 py-3 text-sm font-bold rounded-xl flex items-center justify-center gap-2 transition-all ${activeTab === 'generate' ? 'bg-white shadow-md text-indigo-600' : 'text-slate-600 hover:text-slate-700'}`}
             >
               <Zap size={18} /> IA Libre
             </button>
           </div>
 
-          <div className="flex-1 flex flex-col min-h-[300px]">
+          <div className="flex-1 flex flex-col min-h-[320px]">
             {activeTab === 'convert' ? (
               <div 
                 onClick={() => fileInputRef.current?.click()}
-                className="flex-1 border-2 border-dashed border-slate-200 rounded-[1.5rem] p-8 text-center cursor-pointer hover:border-indigo-300 hover:bg-indigo-50/30 transition-all flex flex-col items-center justify-center group"
+                className="flex-1 border-2 border-dashed border-slate-200 rounded-[2rem] p-8 text-center cursor-pointer hover:border-indigo-400 hover:bg-white transition-all flex flex-col items-center justify-center group"
               >
-                <div className="w-16 h-16 bg-white rounded-2xl shadow-sm border border-slate-100 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
-                  <UploadCloud className="text-indigo-500" size={32} />
+                <div className="w-20 h-20 bg-white rounded-[1.5rem] shadow-sm border border-slate-50 flex items-center justify-center mb-5 group-hover:scale-105 transition-transform group-hover:shadow-lg">
+                  <UploadCloud className="text-indigo-600" size={36} />
                 </div>
-                <p className="text-slate-700 font-bold">Importer un fichier</p>
-                <p className="text-slate-400 text-xs mt-2">Glissez votre image ici</p>
+                <p className="text-slate-800 font-extrabold text-lg">Déposez votre visuel</p>
+                <p className="text-slate-400 text-xs mt-3 font-medium">PNG, JPG ou WEBP supportés</p>
                 <input type="file" ref={fileInputRef} onChange={handleFileUpload} accept="image/*" className="hidden" />
               </div>
             ) : (
-              <div className="space-y-4">
-                <div className="p-3 bg-amber-50 border border-amber-100 rounded-xl mb-2">
-                  <p className="text-[10px] text-amber-700 font-bold leading-tight">
-                    MODE LIBRE : Ce moteur ne nécessite aucune clé API et est disponible immédiatement.
+              <div className="space-y-5">
+                <div className="px-4 py-2.5 bg-indigo-50 border border-indigo-100 rounded-xl">
+                  <p className="text-[10px] text-indigo-600 font-black leading-tight uppercase tracking-wider">
+                    Moteur Flux : Authentifié via gen.pollinations.ai
                   </p>
                 </div>
                 <textarea
                   value={prompt}
                   onChange={(e) => setPrompt(e.target.value)}
-                  placeholder="Ex: Un bureau minimaliste avec des plantes et un café..."
-                  className="w-full h-40 p-5 border border-slate-200 rounded-[1.5rem] focus:ring-4 focus:ring-indigo-50 focus:border-indigo-400 outline-none resize-none text-sm bg-white shadow-inner transition-all"
+                  placeholder="Décrivez l'illustration souhaitée ici..."
+                  className="w-full h-44 p-6 border border-slate-200 rounded-[1.8rem] focus:ring-8 focus:ring-indigo-50 focus:border-indigo-400 outline-none resize-none text-sm bg-white shadow-inner transition-all font-medium"
                 />
                 <button
                   onClick={handleGenerateImage}
                   disabled={isGenerating || !prompt.trim()}
-                  className="w-full bg-slate-900 text-white font-bold py-4 rounded-[1.2rem] hover:bg-indigo-600 transition-all flex items-center justify-center gap-3 disabled:bg-slate-200 shadow-xl shadow-slate-200"
+                  className="w-full bg-slate-900 text-white font-black py-4 rounded-2xl hover:bg-indigo-600 transition-all flex items-center justify-center gap-3 disabled:bg-slate-200 shadow-2xl shadow-slate-200 hover:scale-[1.02] active:scale-95"
                 >
                   {isGenerating ? <Loader2 className="animate-spin" size={20} /> : <Zap size={20} />}
-                  Générer maintenant
+                  GÉNÉRER L'ILLUSTRATION
                 </button>
               </div>
             )}
             
             {error && (
-              <div className="mt-4 p-4 bg-red-50 border border-red-100 rounded-2xl">
-                <p className="text-red-600 text-[11px] font-bold italic">{error}</p>
+              <div className="mt-6 p-4 bg-red-50 border border-red-100 rounded-2xl">
+                <p className="text-red-600 text-[11px] font-black italic text-center">{error}</p>
               </div>
             )}
           </div>
         </div>
 
-        {/* Panneau Droit (Rendu) */}
-        <div className="w-full md:w-1/2 p-10 flex flex-col items-center justify-center relative bg-white">
+        <div className="w-full md:w-1/2 p-12 flex flex-col items-center justify-center bg-white">
           <div 
-            className="mb-10 w-full max-w-[340px] aspect-[340/300] flex items-center justify-center bg-slate-50 border border-slate-100 rounded-[2rem] relative overflow-hidden shadow-inner" 
-            style={{ backgroundImage: 'radial-gradient(#e2e8f0 1.5px, transparent 1.5px)', backgroundSize: '24px 24px' }}
+            className="mb-12 w-full max-w-[340px] aspect-[340/300] flex items-center justify-center bg-[#FAFAFA] border border-slate-50 rounded-[2.5rem] relative overflow-hidden shadow-2xl shadow-slate-100" 
+            style={{ backgroundImage: 'radial-gradient(#E2E8F0 2px, transparent 2px)', backgroundSize: '28px 28px' }}
           >
             {processedImageUrl ? (
-              <img src={processedImageUrl} alt="Preview" className="w-full h-full object-contain animate-in fade-in zoom-in duration-500" />
+              <img src={processedImageUrl} alt="Preview" className="w-full h-full object-contain animate-in fade-in zoom-in duration-700" />
             ) : (
-              <div className="text-center opacity-20">
-                <ImageIcon className="mx-auto mb-3" size={64} />
-                <p className="text-sm font-bold uppercase tracking-widest">En attente</p>
+              <div className="text-center opacity-10">
+                <ImageIcon className="mx-auto mb-4" size={72} />
+                <p className="text-xs font-black uppercase tracking-[0.3em]">Studio Output</p>
               </div>
             )}
           </div>
 
-          <div className="w-full max-w-[280px] space-y-6">
+          <div className="w-full max-w-[280px] space-y-8">
             <div className="text-center">
-              <div className="inline-flex items-center gap-2 px-3 py-1 bg-emerald-50 text-emerald-600 text-[10px] font-black uppercase rounded-full mb-3 tracking-tighter border border-emerald-100">
+              <div className="inline-flex items-center gap-2.5 px-4 py-1.5 bg-emerald-50 text-emerald-600 text-[10px] font-black uppercase rounded-full mb-4 tracking-tight border border-emerald-100">
                 <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" />
-                Format Prêt
+                Rendu Optimisé
               </div>
-              <p className="text-[11px] text-slate-400 font-medium">340x300px • 90 DPI • PNG Alpha</p>
+              <p className="text-[11px] text-slate-400 font-bold tracking-wide">340x300px • 90 DPI • PNG Alpha</p>
             </div>
 
             <a
               href={processedImageUrl || '#'}
-              download="mockup-studio-export.png"
-              className={`w-full py-4 rounded-2xl font-black text-sm flex items-center justify-center gap-3 transition-all ${
+              download="mockup-studio-v3.png"
+              className={`w-full py-5 rounded-2xl font-black text-xs tracking-widest flex items-center justify-center gap-3 transition-all ${
                 processedImageUrl 
-                  ? 'bg-indigo-600 hover:bg-indigo-700 text-white shadow-xl shadow-indigo-200' 
+                  ? 'bg-indigo-600 hover:bg-indigo-700 text-white shadow-2xl shadow-indigo-200 hover:translate-y-[-2px]' 
                   : 'bg-slate-100 text-slate-300 cursor-not-allowed'
               }`}
               onClick={(e) => !processedImageUrl && e.preventDefault()}
             >
-              <Download size={18} /> TÉLÉCHARGER
+              <Download size={18} /> TÉLÉCHARGER LE PNG
             </a>
           </div>
 
