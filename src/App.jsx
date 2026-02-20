@@ -95,7 +95,7 @@ export default function App() {
     setIsGenerating(true);
     setError('');
     
-    // IMPORTANT : Sur GitHub Pages, cette variable est injectée par le Workflow d'Actions
+    // Récupération de la clé API via Vite
     let apiKey = "";
     try {
       apiKey = import.meta.env.VITE_GEMINI_API_KEY || "";
@@ -104,31 +104,35 @@ export default function App() {
     }
 
     if (!apiKey) {
-      setError("Clé API manquante. Assurez-vous d'avoir configuré VITE_GEMINI_API_KEY dans les Secrets GitHub.");
+      setError("Clé API manquante dans l'environnement GitHub.");
       setIsGenerating(false);
       return;
     }
 
-    // On utilise imagen-4.0 ou 3.0 selon les permissions de votre compte
+    // Le modèle peut être "imagen-3.0-generate-001" ou simplement "imagen-3.0"
+    // Dans v1beta de AI Studio, imagen-3.0-generate-001 est le standard actuel.
     const model = "imagen-3.0-generate-001"; 
     const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${model}:predict?key=${apiKey}`;
     
     try {
       let response;
       let retries = 0;
-      const delays = [1000, 2000, 4000, 8000];
+      const delays = [1000, 2000, 4000];
 
-      while (retries < 4) {
+      while (retries < 3) {
         response = await fetch(endpoint, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            // Format strict requis par l'API Imagen via Generative Language
-            instances: {
-              prompt: prompt + ", photorealistic style, professional photography, centered composition, high resolution"
-            },
+            // Format corrigé : instances est un tableau pour l'endpoint :predict
+            instances: [
+              {
+                prompt: prompt + ", photorealistic style, professional photography, centered composition, high resolution, white background"
+              }
+            ],
             parameters: {
-              sampleCount: 1
+              sampleCount: 1,
+              aspectRatio: "1:1"
             }
           })
         });
@@ -136,8 +140,8 @@ export default function App() {
         if (response.ok) break;
         
         const errorData = await response.json().catch(() => ({}));
-        if (response.status === 404) throw new Error(`Le modèle ${model} est introuvable. Vérifiez si ce modèle est activé pour votre clé API.`);
-        if (response.status === 403) throw new Error("Accès refusé. Vérifiez la facturation ou les restrictions régionales de votre projet Google Cloud.");
+        if (response.status === 404) throw new Error(`Modèle ${model} introuvable. Votre région ou clé ne supporte peut-être pas encore Imagen via API.`);
+        if (response.status === 403) throw new Error("Accès refusé. Vérifiez vos quotas ou si Imagen est activé dans Google AI Studio.");
         
         await new Promise(r => setTimeout(r, delays[retries]));
         retries++;
@@ -145,7 +149,7 @@ export default function App() {
 
       if (!response.ok) {
         const finalError = await response.json().catch(() => ({}));
-        throw new Error(finalError.error?.message || "Erreur lors de la génération.");
+        throw new Error(finalError.error?.message || "Échec de la génération.");
       }
 
       const data = await response.json();
@@ -155,12 +159,12 @@ export default function App() {
         setSourceImage(base64Image);
         setActiveTab('convert'); 
       } else {
-        throw new Error("L'API n'a pas renvoyé d'image valide.");
+        throw new Error("L'API a répondu mais n'a pas renvoyé d'image (vérifiez les filtres de sécurité).");
       }
 
     } catch (err) {
       setError(err.message);
-      console.error("Détails de l'erreur:", err);
+      console.error("Détails de l'erreur API:", err);
     } finally {
       setIsGenerating(false);
     }
