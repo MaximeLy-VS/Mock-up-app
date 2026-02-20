@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { UploadCloud, Image as ImageIcon, Wand2, Download, Loader2, RefreshCw } from 'lucide-react';
+import { UploadCloud, Image as ImageIcon, Wand2, Download, Loader2 } from 'lucide-react';
 
 // Fonction utilitaire pour injecter la métadonnée 90 DPI (pHYs chunk) dans un PNG en Base64
 const setDpiInPngBase64 = (base64Image, dpi) => {
@@ -10,24 +10,19 @@ const setDpiInPngBase64 = (base64Image, dpi) => {
       dataArray[i] = data.charCodeAt(i);
     }
 
-    // Vérification de la signature PNG
     if (dataArray[0] !== 137 || dataArray[1] !== 80 || dataArray[2] !== 78 || dataArray[3] !== 71) {
       return base64Image;
     }
 
     const ppm = Math.round(dpi / 0.0254);
     const physChunk = new Uint8Array(21);
-    physChunk[3] = 9; // Longueur
-    physChunk[4] = 112; physChunk[5] = 72; physChunk[6] = 89; physChunk[7] = 115; // Type (pHYs)
+    physChunk[3] = 9;
+    physChunk[4] = 112; physChunk[5] = 72; physChunk[6] = 89; physChunk[7] = 115;
     
-    // Axe X
     physChunk[8] = (ppm >>> 24) & 255; physChunk[9] = (ppm >>> 16) & 255; physChunk[10] = (ppm >>> 8) & 255; physChunk[11] = ppm & 255;
-    // Axe Y
     physChunk[12] = (ppm >>> 24) & 255; physChunk[13] = (ppm >>> 16) & 255; physChunk[14] = (ppm >>> 8) & 255; physChunk[15] = ppm & 255;
-    // Unité (1 = mètre)
     physChunk[16] = 1;
 
-    // Calcul du CRC
     const crcTable = [];
     for (let n = 0; n < 256; n++) {
       let c = n;
@@ -41,7 +36,6 @@ const setDpiInPngBase64 = (base64Image, dpi) => {
     crc = (crc ^ (-1)) >>> 0;
     physChunk[17] = (crc >>> 24) & 255; physChunk[18] = (crc >>> 16) & 255; physChunk[19] = (crc >>> 8) & 255; physChunk[20] = crc & 255;
 
-    // Trouver le chunk IHDR pour insérer pHYs juste après
     let offset = 8;
     while (offset < dataArray.length) {
       const length = (dataArray[offset] << 24) | (dataArray[offset + 1] << 16) | (dataArray[offset + 2] << 8) | dataArray[offset + 3];
@@ -65,7 +59,7 @@ const setDpiInPngBase64 = (base64Image, dpi) => {
     return 'data:image/png;base64,' + btoa(newBase64);
   } catch (error) {
     console.error("Erreur lors de l'injection du DPI:", error);
-    return base64Image; // Retourne l'image sans DPI personnalisé en cas d'erreur
+    return base64Image;
   }
 };
 
@@ -80,7 +74,6 @@ export default function App() {
   const fileInputRef = useRef(null);
   const canvasRef = useRef(null);
 
-  // Gérer l'upload d'image (Convertisseur)
   const handleFileUpload = (e) => {
     const file = e.target.files[0];
     if (file && file.type.startsWith('image/')) {
@@ -93,7 +86,6 @@ export default function App() {
     }
   };
 
-  // Générer une image avec Gemini (Générateur)
   const handleGenerateImage = async () => {
     if (!prompt.trim()) {
       setError("Veuillez entrer une description.");
@@ -103,12 +95,11 @@ export default function App() {
     setIsGenerating(true);
     setError('');
     
-    // Fallback model constraint for Canvas environment
-    const apiKey = ""; 
+    const apiKey = "";
+
     const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/imagen-4.0-generate-001:predict?key=${apiKey}`;
     
     try {
-      // Retries logic as requested by system rules
       let response;
       let retries = 0;
       const delays = [1000, 2000, 4000, 8000, 16000];
@@ -133,16 +124,15 @@ export default function App() {
       const data = await response.json();
       const base64Image = `data:image/png;base64,${data.predictions[0].bytesBase64Encoded}`;
       setSourceImage(base64Image);
-      setActiveTab('convert'); // Basculer automatiquement sur la vue résultat
+      setActiveTab('convert'); 
 
     } catch (err) {
-      setError("Désolé, la génération a échoué. Veuillez réessayer.");
+      setError("Désolé, la génération a échoué. Veuillez vérifier votre clé API.");
     } finally {
       setIsGenerating(false);
     }
   };
 
-  // Traiter l'image (Masque circulaire + 300px hauteur)
   useEffect(() => {
     if (sourceImage && canvasRef.current) {
       const canvas = canvasRef.current;
@@ -150,31 +140,26 @@ export default function App() {
       const img = new Image();
       
       img.onload = () => {
-        // Paramètres de sortie demandés (300px haut, avec décalage)
         const outputHeight = 300;
-        const offset = 40; // Force du décalage vers la droite (en pixels)
-        const outputWidth = outputHeight + offset; // Largeur ajustée pour inclure le décalage
+        const offset = 40; 
+        const outputWidth = outputHeight + offset; 
         
         canvas.width = outputWidth;
         canvas.height = outputHeight;
 
-        // Effacer le canvas
         ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-        // 1. Dessiner le cercle d'arrière-plan (Style classique forcé : Fond transparent, cercle de fond gris)
         ctx.fillStyle = '#E5E7EB';
         ctx.beginPath();
         ctx.arc(outputHeight / 2 + offset, outputHeight / 2, outputHeight / 2, 0, Math.PI * 2);
         ctx.fill();
         ctx.closePath();
 
-        // 2. Dessiner l'image au premier plan (avec masque circulaire à gauche)
         ctx.save();
         ctx.beginPath();
         ctx.arc(outputHeight / 2, outputHeight / 2, outputHeight / 2, 0, Math.PI * 2);
-        ctx.clip(); // Appliquer le masque circulaire pour la photo
+        ctx.clip(); 
 
-        // Calculer l'ajustement "Object-fit: cover" dans le cercle de 300x300
         const imgRatio = img.width / img.height;
         const targetSize = outputHeight;
         let drawW = targetSize;
@@ -182,19 +167,17 @@ export default function App() {
         let drawX = 0;
         let drawY = 0;
 
-        if (imgRatio < 1) { // Portrait
+        if (imgRatio < 1) { 
           drawH = targetSize / imgRatio;
           drawY = (targetSize - drawH) / 2;
-        } else { // Paysage
+        } else { 
           drawW = targetSize * imgRatio;
           drawX = (targetSize - drawW) / 2;
         }
 
-        // Dessiner l'image dans le masque
         ctx.drawImage(img, drawX, drawY, drawW, drawH);
-        ctx.restore(); // Enlever le masque
+        ctx.restore(); 
 
-        // Récupérer le base64 et injecter les 90 DPI
         const rawDataUrl = canvas.toDataURL('image/png');
         const finalDataUrlWithDpi = setDpiInPngBase64(rawDataUrl, 90);
         
@@ -210,14 +193,12 @@ export default function App() {
     <div className="min-h-screen bg-gray-50 flex items-center justify-center p-6 font-sans">
       <div className="max-w-4xl w-full bg-white rounded-2xl shadow-xl overflow-hidden flex flex-col md:flex-row min-h-[500px]">
         
-        {/* Colonne de Gauche : Contrôles */}
         <div className="w-full md:w-1/2 bg-gray-100 p-8 border-r border-gray-200 flex flex-col">
           <h1 className="text-2xl font-bold text-gray-800 mb-6 flex items-center gap-2">
             <ImageIcon className="text-indigo-600" />
             Studio Mock-up
           </h1>
 
-          {/* Onglets */}
           <div className="flex bg-gray-200 rounded-lg p-1 mb-8">
             <button
               onClick={() => setActiveTab('convert')}
@@ -233,7 +214,6 @@ export default function App() {
             </button>
           </div>
 
-          {/* Contenu Convertisseur */}
           {activeTab === 'convert' && (
             <div className="flex-1 flex flex-col justify-center">
               <div 
@@ -256,7 +236,6 @@ export default function App() {
             </div>
           )}
 
-          {/* Contenu Générateur */}
           {activeTab === 'generate' && (
             <div className="flex-1 flex flex-col">
               <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -290,7 +269,6 @@ export default function App() {
           )}
         </div>
 
-        {/* Colonne de Droite : Prévisualisation & Résultat */}
         <div className="w-full md:w-1/2 p-8 flex flex-col items-center justify-center bg-white">
           
           <div 
@@ -330,7 +308,6 @@ export default function App() {
             Télécharger (.png)
           </a>
 
-          {/* Canvas caché utilisé pour le traitement de l'image */}
           <canvas ref={canvasRef} className="hidden" />
 
         </div>
