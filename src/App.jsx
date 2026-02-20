@@ -108,11 +108,11 @@ export default function App() {
       // Récupération de la clé API Pollinations via Vite
       const apiKey = import.meta.env.VITE_POLLINATIONS_API_KEY;
 
-      const encodedPrompt = encodeURIComponent(prompt + ", professional commercial photography, high quality, centered composition, clean simple background");
+      const encodedPrompt = encodeURIComponent(prompt + ", professional commercial photography, high quality, hyper realistic, centered composition");
       const seed = Math.floor(Math.random() * 1000000);
       
       // Construction de l'URL avec les paramètres de la documentation
-      const imageUrl = `https://gen.pollinations.ai/image/${encodedPrompt}?width=1024&height=1024&seed=${seed}&nologo=true&model=flux`;
+      const imageUrl = `https://gen.pollinations.ai/image/${encodedPrompt}?width=800&height=800&seed=${seed}&nologo=true&model=flux`;
       
       // Envoi de la requête avec l'en-tête d'autorisation (Bearer token)
       const response = await fetch(imageUrl, {
@@ -200,8 +200,8 @@ export default function App() {
                 <ImageIcon className="text-white" size={24} />
               </div>
               <div>
-                <h1 className="text-2xl font-black tracking-tight text-slate-800">Studio Mock-up</h1>
-                <p className="text-slate-400 text-[10px] font-bold uppercase tracking-[0.2em]">Illustration Engine v3</p>
+                <h1 className="text-2xl font-black tracking-tight text-slate-800">Mock-up – Mission</h1>
+                <p className="text-slate-400 text-[10px] font-bold uppercase tracking-[0.2em]">Générateur d'llustration</p>
               </div>
             </div>
           </header>
@@ -211,13 +211,13 @@ export default function App() {
               onClick={() => setActiveTab('convert')}
               className={`flex-1 py-3 text-sm font-bold rounded-xl flex items-center justify-center gap-2 transition-all ${activeTab === 'convert' ? 'bg-white shadow-md text-indigo-600' : 'text-slate-500 hover:text-slate-700'}`}
             >
-              <UploadCloud size={18} /> Import
+              <UploadCloud size={18} />  Conversion de visuel
             </button>
             <button
               onClick={() => setActiveTab('generate')}
               className={`flex-1 py-3 text-sm font-bold rounded-xl flex items-center justify-center gap-2 transition-all ${activeTab === 'generate' ? 'bg-white shadow-md text-indigo-600' : 'text-slate-500 hover:text-slate-700'}`}
             >
-              <Zap size={18} /> IA Libre
+              <Zap size={18} /> Génération par IA
             </button>
           </div>
 
