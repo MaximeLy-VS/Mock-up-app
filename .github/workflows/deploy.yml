@@ -2,48 +2,46 @@ name: Deploy to GitHub Pages
 
 on:
   push:
-    branches:
-      - main  # Déclenche le déploiement à chaque push sur main
-  pull_request:
-    branches:
-      - main
+    branches: ["main"] # Assurez-vous que votre branche principale s'appelle bien 'main'
+
+# Permissions nécessaires pour publier sur GitHub Pages
+permissions:
+  contents: read
+  pages: write
+  id-token: write
 
 jobs:
-  build-and-deploy:
+  build:
     runs-on: ubuntu-latest
-    
-    permissions:
-      contents: read
-      pages: write
-      id-token: write
-
     steps:
-      # 1. Récupérer le code
-      - name: Checkout repository
+      - name: Checkout
         uses: actions/checkout@v4
-
-      # 2. Configurer Node.js
-      - name: Setup Node.js
+      - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: '18'
+          node-version: 20
           cache: 'npm'
-
-      # 3. Installer les dépendances
       - name: Install dependencies
         run: npm install
-
-      # 4. Build l'application
-      - name: Build application
+      - name: Build
+        # C'est ICI que l'on injecte la variable secrète pour Vite !
+        env:
+          VITE_GEMINI_API_KEY: ${{ secrets.VITE_GEMINI_API_KEY }}
         run: npm run build
-
-      # 5. Upload les artifacts
+      - name: Setup Pages
+        uses: actions/configure-pages@v4
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
           path: './dist'
 
-      # 6. Déployer sur GitHub Pages
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
