@@ -104,33 +104,33 @@ export default function App() {
     }
 
     if (!apiKey) {
-      setError("Clé API manquante dans l'environnement GitHub (Secrets).");
+      setError("Clé API manquante (VITE_GEMINI_API_KEY).");
       setIsGenerating(false);
       return;
     }
 
-    // Modèle Gemini 2.0 Flash configuré pour la génération d'images
-    const model = "gemini-2.0-flash"; 
-    const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+    // On repasse sur Imagen 3 car Gemini 2.0 ne supporte pas la modalité de sortie "IMAGE"
+    const model = "imagen-3.0-generate-001"; 
+    const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${model}:predict?key=${apiKey}`;
     
     try {
       let response;
       let retries = 0;
-      const delays = [1000, 2000, 4000];
+      const delays = [1500, 3000, 6000];
 
       while (retries < 3) {
         response = await fetch(endpoint, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            contents: [{
-              parts: [{
-                text: `Generate a high-quality, square illustration (no text) based on: ${prompt}. Professional, centered, high resolution.`
-              }]
-            }],
-            generationConfig: {
-              // Note: Certains environnements exigent "IMAGE" ou ["TEXT", "IMAGE"]
-              responseModalities: ["IMAGE"]
+            // Format strict pour :predict
+            instances: [
+              {
+                prompt: prompt + ", professional photography, centered composition, high quality, isolated on neutral background"
+              }
+            ],
+            parameters: {
+              sampleCount: 1
             }
           })
         });
@@ -138,37 +138,33 @@ export default function App() {
         if (response.ok) break;
         
         const errorData = await response.json().catch(() => ({}));
-        const errorMessage = errorData.error?.message || JSON.stringify(errorData);
+        const msg = errorData.error?.message || "Erreur inconnue";
         
-        if (response.status === 400) {
-          throw new Error(`Erreur 400 (Format): ${errorMessage}`);
-        }
+        if (response.status === 404) throw new Error(`Modèle ${model} introuvable. Essayez de vérifier si l'API Imagen est activée dans votre console Cloud.`);
+        if (response.status === 403) throw new Error("Accès refusé. Vérifiez vos droits ou la facturation sur Google Cloud.");
         
         await new Promise(r => setTimeout(r, delays[retries]));
         retries++;
       }
 
       if (!response.ok) {
-        const finalErrorData = await response.json().catch(() => ({}));
-        throw new Error(finalErrorData.error?.message || "Échec de la génération après tentatives.");
+        const finalError = await response.json().catch(() => ({}));
+        throw new Error(finalError.error?.message || `Erreur ${response.status}`);
       }
 
       const data = await response.json();
       
-      // Recherche du bloc contenant les données binaires de l'image
-      const imagePart = data.candidates?.[0]?.content?.parts?.find(p => p.inlineData);
-      
-      if (imagePart && imagePart.inlineData?.data) {
-        const base64Image = `data:image/png;base64,${imagePart.inlineData.data}`;
+      if (data.predictions && data.predictions[0]?.bytesBase64Encoded) {
+        const base64Image = `data:image/png;base64,${data.predictions[0].bytesBase64Encoded}`;
         setSourceImage(base64Image);
         setActiveTab('convert'); 
       } else {
-        throw new Error("L'IA n'a pas renvoyé d'image. Détails : " + JSON.stringify(data));
+        throw new Error("L'API a répondu mais aucune image n'a été générée.");
       }
 
     } catch (err) {
       setError(err.message);
-      console.error("Détails de l'erreur API:", err);
+      console.error("Détails API:", err);
     } finally {
       setIsGenerating(false);
     }
