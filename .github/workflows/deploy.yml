@@ -27,6 +27,7 @@ jobs:
         # C'est ICI que l'on injecte la variable secrète pour Vite !
         env:
           VITE_GEMINI_API_KEY: ${{ secrets.VITE_GEMINI_API_KEY }}
+          VITE_POLLINATIONS_API_KEY: ${{ secrets.VITE_POLLINATIONS_API_KEY }}
         run: npm run build
       - name: Setup Pages
         uses: actions/configure-pages@v4
