@@ -117,7 +117,7 @@ export default function App() {
       // Envoi de la requête avec l'en-tête d'autorisation (Bearer token)
       const response = await fetch(imageUrl, {
         method: 'GET',
-        headers: apiKey ? {
+        header: apiKey ? {
           'Authorization': `Bearer ${apiKey}`
         } : {}
       });
