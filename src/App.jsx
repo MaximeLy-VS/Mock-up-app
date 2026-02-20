@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { UploadCloud, Image as ImageIcon, Wand2, Download, Loader2 } from 'lucide-react';
+import { UploadCloud, Image as ImageIcon, Wand2, Download, Loader2, Zap } from 'lucide-react';
 
 // Fonction utilitaire pour injecter la métadonnée 90 DPI (pHYs chunk) dans un PNG en Base64
 const setDpiInPngBase64 = (base64Image, dpi) => {
@@ -86,6 +86,10 @@ export default function App() {
     }
   };
 
+  /**
+   * Utilisation de Pollinations.ai
+   * Avantages : Gratuit, pas de clé API, très rapide pour les tests.
+   */
   const handleGenerateImage = async () => {
     if (!prompt.trim()) {
       setError("Veuillez entrer une description.");
@@ -95,85 +99,28 @@ export default function App() {
     setIsGenerating(true);
     setError('');
     
-    let apiKey = "";
     try {
-      // @ts-ignore
-      apiKey = import.meta.env.VITE_GEMINI_API_KEY || "";
-    } catch (e) {
-      apiKey = "";
-    }
+      // Construction de l'URL de génération (Pollinations accepte les paramètres en URL)
+      const encodedPrompt = encodeURIComponent(prompt + ", professional photography, high resolution, centered, clean background");
+      const seed = Math.floor(Math.random() * 1000000);
+      const imageUrl = `https://image.pollinations.ai/prompt/${encodedPrompt}?width=1024&height=1024&seed=${seed}&nologo=true&model=flux`;
 
-    if (!apiKey) {
-      setError("Clé API manquante (VITE_GEMINI_API_KEY).");
-      setIsGenerating(false);
-      return;
-    }
+      // On vérifie que l'image est bien générée en essayant de la charger
+      const response = await fetch(imageUrl);
+      if (!response.ok) throw new Error("Le service de génération est temporairement indisponible.");
 
-    /**
-     * Note sur l'erreur 404 : Si "imagen-3.0-generate-001" est introuvable, 
-     * cela signifie que le modèle n'est pas activé pour votre projet Google Cloud 
-     * ou n'est pas disponible dans votre zone géographique pour cette clé.
-     */
-    const modelName = "imagen-3.0-generate-001"; 
-    const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:predict?key=${apiKey}`;
-    
-    try {
-      let response;
-      let retries = 0;
-      const delays = [1500, 3000, 6000];
-
-      while (retries < 3) {
-        response = await fetch(endpoint, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            instances: [
-              {
-                prompt: prompt + ", high quality professional photography, centered, neutral background"
-              }
-            ],
-            parameters: {
-              sampleCount: 1
-            }
-          })
-        });
-
-        if (response.ok) break;
-        
-        const errorData = await response.json().catch(() => ({}));
-        const msg = errorData.error?.message || "Erreur inconnue";
-        
-        if (response.status === 404) {
-          throw new Error(`Modèle introuvable (404). Vérifiez que l'API "Imagen" est activée dans votre Google Cloud Console pour ce projet.`);
-        }
-        
-        if (response.status === 403) {
-          throw new Error("Accès refusé (403). Vérifiez si Imagen est activé pour votre clé API dans AI Studio.");
-        }
-        
-        await new Promise(r => setTimeout(r, delays[retries]));
-        retries++;
-      }
-
-      if (!response.ok) {
-        const finalError = await response.json().catch(() => ({}));
-        throw new Error(finalError.error?.message || `Erreur ${response.status}`);
-      }
-
-      const data = await response.json();
-      
-      if (data.predictions && data.predictions[0]?.bytesBase64Encoded) {
-        const base64Image = `data:image/png;base64,${data.predictions[0].bytesBase64Encoded}`;
-        setSourceImage(base64Image);
-        setActiveTab('convert'); 
-      } else {
-        throw new Error("L'API a répondu mais aucune image n'a été générée (vérifiez les filtres de sécurité).");
-      }
+      // On convertit en Blob puis en Base64 pour rester compatible avec notre pipeline de DPI
+      const blob = await response.blob();
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setSourceImage(reader.result);
+        setActiveTab('convert');
+        setIsGenerating(false);
+      };
+      reader.readAsDataURL(blob);
 
     } catch (err) {
-      setError(err.message);
-      console.error("Détails API:", err);
-    } finally {
+      setError("Désolé, la génération a échoué. Réessayez dans quelques instants.");
       setIsGenerating(false);
     }
   };
@@ -183,6 +130,7 @@ export default function App() {
       const canvas = canvasRef.current;
       const ctx = canvas.getContext('2d');
       const img = new Image();
+      img.crossOrigin = "anonymous"; // Crucial pour les images provenant d'une URL externe
       
       img.onload = () => {
         const h = 300;
@@ -193,11 +141,13 @@ export default function App() {
         canvas.height = h;
         ctx.clearRect(0, 0, w, h);
 
-        ctx.fillStyle = '#E5E7EB';
+        // Cercle gris décalé
+        ctx.fillStyle = '#F3F4F6';
         ctx.beginPath();
         ctx.arc(h/2 + off, h/2, h/2, 0, Math.PI * 2);
         ctx.fill();
 
+        // Image avec masque
         ctx.save();
         ctx.beginPath();
         ctx.arc(h/2, h/2, h/2, 0, Math.PI * 2);
@@ -219,32 +169,33 @@ export default function App() {
   }, [sourceImage]);
 
   return (
-    <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4 font-sans text-slate-900">
-      <div className="max-w-4xl w-full bg-white rounded-3xl shadow-2xl overflow-hidden flex flex-col md:flex-row border border-slate-100">
+    <div className="min-h-screen bg-[#F8FAFC] flex items-center justify-center p-4 font-sans text-slate-900">
+      <div className="max-w-4xl w-full bg-white rounded-[2rem] shadow-2xl shadow-slate-200/50 overflow-hidden flex flex-col md:flex-row border border-slate-100">
         
-        <div className="w-full md:w-1/2 bg-slate-50/50 p-8 flex flex-col border-b md:border-b-0 md:border-r border-slate-200">
+        {/* Panneau Gauche */}
+        <div className="w-full md:w-1/2 bg-slate-50/50 p-8 flex flex-col border-b md:border-b-0 md:border-r border-slate-100">
           <header className="mb-8">
             <div className="flex items-center gap-3 mb-2">
-              <div className="p-2 bg-indigo-600 rounded-lg shadow-lg">
-                <ImageIcon className="text-white" size={24} />
+              <div className="p-2.5 bg-indigo-600 rounded-2xl shadow-lg shadow-indigo-100">
+                <ImageIcon className="text-white" size={22} />
               </div>
-              <h1 className="text-xl font-bold tracking-tight">Studio Mock-up</h1>
+              <h1 className="text-xl font-extrabold tracking-tight text-slate-800">Studio Mock-up</h1>
             </div>
-            <p className="text-slate-500 text-sm">Convertisseur & Générateur d'illustrations.</p>
+            <p className="text-slate-400 text-xs font-medium uppercase tracking-widest">Illustration Designer v2</p>
           </header>
 
-          <div className="flex bg-slate-200/50 p-1 rounded-xl mb-8">
+          <div className="flex bg-slate-200/50 p-1 rounded-2xl mb-8">
             <button
               onClick={() => setActiveTab('convert')}
-              className={`flex-1 py-2.5 text-sm font-semibold rounded-lg flex items-center justify-center gap-2 transition-all ${activeTab === 'convert' ? 'bg-white shadow-sm text-indigo-600' : 'text-slate-600 hover:text-slate-800'}`}
+              className={`flex-1 py-3 text-sm font-bold rounded-xl flex items-center justify-center gap-2 transition-all ${activeTab === 'convert' ? 'bg-white shadow-sm text-indigo-600' : 'text-slate-500 hover:text-slate-700'}`}
             >
               <UploadCloud size={18} /> Import
             </button>
             <button
               onClick={() => setActiveTab('generate')}
-              className={`flex-1 py-2.5 text-sm font-semibold rounded-lg flex items-center justify-center gap-2 transition-all ${activeTab === 'generate' ? 'bg-white shadow-sm text-indigo-600' : 'text-slate-600 hover:text-slate-800'}`}
+              className={`flex-1 py-3 text-sm font-bold rounded-xl flex items-center justify-center gap-2 transition-all ${activeTab === 'generate' ? 'bg-white shadow-sm text-indigo-600' : 'text-slate-600 hover:text-slate-700'}`}
             >
-              <Wand2 size={18} /> IA
+              <Zap size={18} /> IA Libre
             </button>
           </div>
 
@@ -252,72 +203,83 @@ export default function App() {
             {activeTab === 'convert' ? (
               <div 
                 onClick={() => fileInputRef.current?.click()}
-                className="flex-1 border-2 border-dashed border-slate-300 rounded-2xl p-8 text-center cursor-pointer hover:border-indigo-400 hover:bg-indigo-50/30 transition-all flex flex-col items-center justify-center group"
+                className="flex-1 border-2 border-dashed border-slate-200 rounded-[1.5rem] p-8 text-center cursor-pointer hover:border-indigo-300 hover:bg-indigo-50/30 transition-all flex flex-col items-center justify-center group"
               >
-                <UploadCloud className="text-slate-400 group-hover:text-indigo-500 mb-4 transition-colors" size={48} />
-                <p className="text-slate-700 font-semibold">Cliquer pour importer</p>
-                <p className="text-slate-400 text-xs mt-1">PNG, JPG jusqu'à 5MB</p>
+                <div className="w-16 h-16 bg-white rounded-2xl shadow-sm border border-slate-100 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                  <UploadCloud className="text-indigo-500" size={32} />
+                </div>
+                <p className="text-slate-700 font-bold">Importer un fichier</p>
+                <p className="text-slate-400 text-xs mt-2">Glissez votre image ici</p>
                 <input type="file" ref={fileInputRef} onChange={handleFileUpload} accept="image/*" className="hidden" />
               </div>
             ) : (
               <div className="space-y-4">
+                <div className="p-3 bg-amber-50 border border-amber-100 rounded-xl mb-2">
+                  <p className="text-[10px] text-amber-700 font-bold leading-tight">
+                    MODE LIBRE : Ce moteur ne nécessite aucune clé API et est disponible immédiatement.
+                  </p>
+                </div>
                 <textarea
                   value={prompt}
                   onChange={(e) => setPrompt(e.target.value)}
-                  placeholder="Ex: Une équipe travaillant dans un bureau moderne avec des post-its..."
-                  className="w-full h-40 p-4 border border-slate-200 rounded-2xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent resize-none text-sm bg-white"
+                  placeholder="Ex: Un bureau minimaliste avec des plantes et un café..."
+                  className="w-full h-40 p-5 border border-slate-200 rounded-[1.5rem] focus:ring-4 focus:ring-indigo-50 focus:border-indigo-400 outline-none resize-none text-sm bg-white shadow-inner transition-all"
                 />
                 <button
                   onClick={handleGenerateImage}
                   disabled={isGenerating || !prompt.trim()}
-                  className="w-full bg-indigo-600 text-white font-bold py-4 rounded-2xl hover:bg-indigo-700 transition-all flex items-center justify-center gap-3 disabled:bg-slate-300 shadow-lg shadow-indigo-100"
+                  className="w-full bg-slate-900 text-white font-bold py-4 rounded-[1.2rem] hover:bg-indigo-600 transition-all flex items-center justify-center gap-3 disabled:bg-slate-200 shadow-xl shadow-slate-200"
                 >
-                  {isGenerating ? <Loader2 className="animate-spin" size={20} /> : <Wand2 size={20} />}
-                  Générer l'illustration
+                  {isGenerating ? <Loader2 className="animate-spin" size={20} /> : <Zap size={20} />}
+                  Générer maintenant
                 </button>
               </div>
             )}
             
             {error && (
-              <div className="mt-4 p-4 bg-red-50 border border-red-100 rounded-xl max-h-[150px] overflow-y-auto">
-                <p className="text-red-600 text-[10px] font-mono leading-tight italic">{error}</p>
+              <div className="mt-4 p-4 bg-red-50 border border-red-100 rounded-2xl">
+                <p className="text-red-600 text-[11px] font-bold italic">{error}</p>
               </div>
             )}
           </div>
         </div>
 
-        <div className="w-full md:w-1/2 p-8 flex flex-col items-center justify-center">
+        {/* Panneau Droit (Rendu) */}
+        <div className="w-full md:w-1/2 p-10 flex flex-col items-center justify-center relative bg-white">
           <div 
-            className="mb-8 w-full max-w-[340px] aspect-[340/300] flex items-center justify-center bg-slate-50 border border-slate-100 rounded-3xl relative overflow-hidden" 
-            style={{ backgroundImage: 'radial-gradient(#cbd5e1 1px, transparent 1px)', backgroundSize: '20px 20px' }}
+            className="mb-10 w-full max-w-[340px] aspect-[340/300] flex items-center justify-center bg-slate-50 border border-slate-100 rounded-[2rem] relative overflow-hidden shadow-inner" 
+            style={{ backgroundImage: 'radial-gradient(#e2e8f0 1.5px, transparent 1.5px)', backgroundSize: '24px 24px' }}
           >
             {processedImageUrl ? (
-              <img src={processedImageUrl} alt="Preview" className="w-full h-full object-contain" />
+              <img src={processedImageUrl} alt="Preview" className="w-full h-full object-contain animate-in fade-in zoom-in duration-500" />
             ) : (
               <div className="text-center opacity-20">
-                <ImageIcon className="mx-auto mb-2" size={64} />
-                <p className="text-sm font-medium">Votre visuel ici</p>
+                <ImageIcon className="mx-auto mb-3" size={64} />
+                <p className="text-sm font-bold uppercase tracking-widest">En attente</p>
               </div>
             )}
           </div>
 
-          <div className="w-full max-w-[300px] space-y-6">
+          <div className="w-full max-w-[280px] space-y-6">
             <div className="text-center">
-              <span className="inline-block px-3 py-1 bg-indigo-100 text-indigo-700 text-[10px] font-bold uppercase rounded-full mb-2 tracking-tighter">Fichier finalisé</span>
-              <p className="text-[11px] text-slate-400">340x300px • 90 DPI • PNG Transparent</p>
+              <div className="inline-flex items-center gap-2 px-3 py-1 bg-emerald-50 text-emerald-600 text-[10px] font-black uppercase rounded-full mb-3 tracking-tighter border border-emerald-100">
+                <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" />
+                Format Prêt
+              </div>
+              <p className="text-[11px] text-slate-400 font-medium">340x300px • 90 DPI • PNG Alpha</p>
             </div>
 
             <a
               href={processedImageUrl || '#'}
-              download="mockup-illustration.png"
-              className={`w-full py-4 rounded-2xl font-bold flex items-center justify-center gap-3 transition-all ${
+              download="mockup-studio-export.png"
+              className={`w-full py-4 rounded-2xl font-black text-sm flex items-center justify-center gap-3 transition-all ${
                 processedImageUrl 
-                  ? 'bg-emerald-500 hover:bg-emerald-600 text-white shadow-lg' 
-                  : 'bg-slate-100 text-slate-400 cursor-not-allowed'
+                  ? 'bg-indigo-600 hover:bg-indigo-700 text-white shadow-xl shadow-indigo-200' 
+                  : 'bg-slate-100 text-slate-300 cursor-not-allowed'
               }`}
               onClick={(e) => !processedImageUrl && e.preventDefault()}
             >
-              <Download size={20} /> Télécharger
+              <Download size={18} /> TÉLÉCHARGER
             </a>
           </div>
 
