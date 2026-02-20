@@ -95,7 +95,7 @@ export default function App() {
     setIsGenerating(true);
     setError('');
     
-    // Récupération de la clé API via Vite
+    // Récupération de la clé API via Vite (GitHub Secrets)
     let apiKey = "";
     try {
       apiKey = import.meta.env.VITE_GEMINI_API_KEY || "";
@@ -109,10 +109,10 @@ export default function App() {
       return;
     }
 
-    // Le modèle peut être "imagen-3.0-generate-001" ou simplement "imagen-3.0"
-    // Dans v1beta de AI Studio, imagen-3.0-generate-001 est le standard actuel.
-    const model = "imagen-3.0-generate-001"; 
-    const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${model}:predict?key=${apiKey}`;
+    // Mise à jour pour utiliser gemini-2.0-flash via generateContent
+    // Note: Pour l'environnement de preview, on utilise gemini-2.5-flash-image-preview
+    const model = "gemini-2.0-flash"; 
+    const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
     
     try {
       let response;
@@ -124,15 +124,14 @@ export default function App() {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            // Format corrigé : instances est un tableau pour l'endpoint :predict
-            instances: [
-              {
-                prompt: prompt + ", photorealistic style, professional photography, centered composition, high resolution, white background"
-              }
-            ],
-            parameters: {
-              sampleCount: 1,
-              aspectRatio: "1:1"
+            contents: [{
+              parts: [{
+                text: `Generate a high-quality, professional photorealistic square illustration for a mock-up based on this prompt: ${prompt}. The image should be centered with a clean composition.`
+              }]
+            }],
+            generationConfig: {
+              // Indique au modèle de générer une image au lieu de texte
+              responseModalities: ["IMAGE"]
             }
           })
         });
@@ -140,8 +139,8 @@ export default function App() {
         if (response.ok) break;
         
         const errorData = await response.json().catch(() => ({}));
-        if (response.status === 404) throw new Error(`Modèle ${model} introuvable. Votre région ou clé ne supporte peut-être pas encore Imagen via API.`);
-        if (response.status === 403) throw new Error("Accès refusé. Vérifiez vos quotas ou si Imagen est activé dans Google AI Studio.");
+        if (response.status === 404) throw new Error(`Modèle ${model} introuvable ou ne supporte pas generateContent avec IMAGE.`);
+        if (response.status === 403) throw new Error("Accès refusé. Vérifiez si votre clé API a les droits pour la génération d'images.");
         
         await new Promise(r => setTimeout(r, delays[retries]));
         retries++;
@@ -154,12 +153,15 @@ export default function App() {
 
       const data = await response.json();
       
-      if (data.predictions && data.predictions[0]?.bytesBase64Encoded) {
-        const base64Image = `data:image/png;base64,${data.predictions[0].bytesBase64Encoded}`;
+      // Extraction de l'image depuis les parts de la réponse generateContent
+      const imagePart = data.candidates?.[0]?.content?.parts?.find(p => p.inlineData);
+      
+      if (imagePart && imagePart.inlineData?.data) {
+        const base64Image = `data:image/png;base64,${imagePart.inlineData.data}`;
         setSourceImage(base64Image);
         setActiveTab('convert'); 
       } else {
-        throw new Error("L'API a répondu mais n'a pas renvoyé d'image (vérifiez les filtres de sécurité).");
+        throw new Error("L'IA n'a pas renvoyé d'image (vérifiez les paramètres de sécurité ou le prompt).");
       }
 
     } catch (err) {
