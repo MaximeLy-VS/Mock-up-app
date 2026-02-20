@@ -73,6 +73,7 @@ export default function App() {
   const [sourceImage, setSourceImage] = useState(null);
   const [processedImageUrl, setProcessedImageUrl] = useState(null);
   const [prompt, setPrompt] = useState('');
+  const [selectedModel, setSelectedModel] = useState('flux');
   const [isGenerating, setIsGenerating] = useState(false);
   const [error, setError] = useState('');
   
@@ -111,8 +112,8 @@ export default function App() {
       const encodedPrompt = encodeURIComponent(prompt + ", professional commercial photography, high quality, hyper realistic, centered composition");
       const seed = Math.floor(Math.random() * 1000000);
       
-      // Construction de l'URL avec les paramètres de la documentation
-      const imageUrl = `https://gen.pollinations.ai/image/${encodedPrompt}?width=800&height=800&seed=${seed}&nologo=true&model=flux`;
+      // Construction de l'URL avec la variable selectedModel
+      const imageUrl = `https://gen.pollinations.ai/image/${encodedPrompt}?width=800&height=800&seed=${seed}&nologo=true&model=${selectedModel}`;
       
       // Envoi de la requête avec l'en-tête d'autorisation (Bearer token)
       const response = await fetch(imageUrl, {
@@ -200,8 +201,8 @@ export default function App() {
                 <ImageIcon className="text-white" size={24} />
               </div>
               <div>
-                <h1 className="text-2xl font-black tracking-tight text-slate-800">Mock-up – Mission</h1>
-                <p className="text-slate-400 text-[10px] font-bold uppercase tracking-[0.2em]">Générateur d'llustration</p>
+                <h1 className="text-2xl font-black tracking-tight text-slate-800">Studio Mock-up</h1>
+                <p className="text-slate-400 text-[10px] font-bold uppercase tracking-[0.2em]">Illustration Engine v3</p>
               </div>
             </div>
           </header>
@@ -211,13 +212,13 @@ export default function App() {
               onClick={() => setActiveTab('convert')}
               className={`flex-1 py-3 text-sm font-bold rounded-xl flex items-center justify-center gap-2 transition-all ${activeTab === 'convert' ? 'bg-white shadow-md text-indigo-600' : 'text-slate-500 hover:text-slate-700'}`}
             >
-              <UploadCloud size={18} />  Conversion de visuel
+              <UploadCloud size={18} /> Import
             </button>
             <button
               onClick={() => setActiveTab('generate')}
               className={`flex-1 py-3 text-sm font-bold rounded-xl flex items-center justify-center gap-2 transition-all ${activeTab === 'generate' ? 'bg-white shadow-md text-indigo-600' : 'text-slate-500 hover:text-slate-700'}`}
             >
-              <Zap size={18} /> Génération par IA
+              <Zap size={18} /> IA Libre
             </button>
           </div>
 
@@ -238,9 +239,21 @@ export default function App() {
               <div className="space-y-5">
                 <div className="px-4 py-2.5 bg-indigo-50 border border-indigo-100 rounded-xl">
                   <p className="text-[10px] text-indigo-600 font-black leading-tight uppercase tracking-wider">
-                    Moteur Flux : Authentifié via gen.pollinations.ai
+                    Moteur IA : Authentifié via gen.pollinations.ai
                   </p>
                 </div>
+
+                <select
+                  value={selectedModel}
+                  onChange={(e) => setSelectedModel(e.target.value)}
+                  className="w-full p-4 border border-slate-200 rounded-[1.8rem] focus:ring-8 focus:ring-indigo-50 focus:border-indigo-400 outline-none text-sm bg-white shadow-inner transition-all font-medium cursor-pointer"
+                >
+                  <option value="flux">Flux Schnell</option>
+                  <option value="flux-klein-4b">Flux.2 Klein 4B</option>
+                  <option value="flux-klein-9b">Flux.2 Klein9B</option>
+                  <option value="gpt-image-1-mini">GPT Image 1 mini</option>
+                </select>
+
                 <textarea
                   value={prompt}
                   onChange={(e) => setPrompt(e.target.value)}
