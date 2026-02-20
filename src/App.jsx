@@ -109,9 +109,13 @@ export default function App() {
       return;
     }
 
-    // On repasse sur Imagen 3 car Gemini 2.0 ne supporte pas la modalité de sortie "IMAGE"
-    const model = "imagen-3.0-generate-001"; 
-    const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${model}:predict?key=${apiKey}`;
+    /**
+     * Note sur l'erreur 404 : Si "imagen-3.0-generate-001" est introuvable, 
+     * cela signifie que le modèle n'est pas activé pour votre projet Google Cloud 
+     * ou n'est pas disponible dans votre zone géographique pour cette clé.
+     */
+    const modelName = "imagen-3.0-generate-001"; 
+    const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:predict?key=${apiKey}`;
     
     try {
       let response;
@@ -123,10 +127,9 @@ export default function App() {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            // Format strict pour :predict
             instances: [
               {
-                prompt: prompt + ", professional photography, centered composition, high quality, isolated on neutral background"
+                prompt: prompt + ", high quality professional photography, centered, neutral background"
               }
             ],
             parameters: {
@@ -140,8 +143,13 @@ export default function App() {
         const errorData = await response.json().catch(() => ({}));
         const msg = errorData.error?.message || "Erreur inconnue";
         
-        if (response.status === 404) throw new Error(`Modèle ${model} introuvable. Essayez de vérifier si l'API Imagen est activée dans votre console Cloud.`);
-        if (response.status === 403) throw new Error("Accès refusé. Vérifiez vos droits ou la facturation sur Google Cloud.");
+        if (response.status === 404) {
+          throw new Error(`Modèle introuvable (404). Vérifiez que l'API "Imagen" est activée dans votre Google Cloud Console pour ce projet.`);
+        }
+        
+        if (response.status === 403) {
+          throw new Error("Accès refusé (403). Vérifiez si Imagen est activé pour votre clé API dans AI Studio.");
+        }
         
         await new Promise(r => setTimeout(r, delays[retries]));
         retries++;
@@ -159,7 +167,7 @@ export default function App() {
         setSourceImage(base64Image);
         setActiveTab('convert'); 
       } else {
-        throw new Error("L'API a répondu mais aucune image n'a été générée.");
+        throw new Error("L'API a répondu mais aucune image n'a été générée (vérifiez les filtres de sécurité).");
       }
 
     } catch (err) {
