@@ -87,7 +87,7 @@ export default function App() {
         setSourceImage(event.target.result);
         setError('');
       };
-      reader.readAsAsDataURL(file);
+      reader.readAsDataURL(file);
     }
   };
 
