@@ -7,5 +7,5 @@ export default defineConfig({
     react(),
     tailwindcss(),
   ],
-  base: '/Mock-up-app/',  // Remplace par le nom de ton repo
+  base: './', 
 });
