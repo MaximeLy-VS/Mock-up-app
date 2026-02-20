@@ -95,22 +95,21 @@ export default function App() {
     setIsGenerating(true);
     setError('');
     
-    // Récupération de la clé API via Vite (GitHub Secrets)
     let apiKey = "";
     try {
+      // @ts-ignore
       apiKey = import.meta.env.VITE_GEMINI_API_KEY || "";
     } catch (e) {
       apiKey = "";
     }
 
     if (!apiKey) {
-      setError("Clé API manquante dans l'environnement GitHub.");
+      setError("Clé API manquante dans l'environnement GitHub (Secrets).");
       setIsGenerating(false);
       return;
     }
 
-    // Mise à jour pour utiliser gemini-2.0-flash via generateContent
-    // Note: Pour l'environnement de preview, on utilise gemini-2.5-flash-image-preview
+    // Modèle Gemini 2.0 Flash configuré pour la génération d'images
     const model = "gemini-2.0-flash"; 
     const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
     
@@ -126,11 +125,11 @@ export default function App() {
           body: JSON.stringify({
             contents: [{
               parts: [{
-                text: `Generate a high-quality, professional photorealistic square illustration for a mock-up based on this prompt: ${prompt}. The image should be centered with a clean composition.`
+                text: `Generate a high-quality, square illustration (no text) based on: ${prompt}. Professional, centered, high resolution.`
               }]
             }],
             generationConfig: {
-              // Indique au modèle de générer une image au lieu de texte
+              // Note: Certains environnements exigent "IMAGE" ou ["TEXT", "IMAGE"]
               responseModalities: ["IMAGE"]
             }
           })
@@ -139,21 +138,24 @@ export default function App() {
         if (response.ok) break;
         
         const errorData = await response.json().catch(() => ({}));
-        if (response.status === 404) throw new Error(`Modèle ${model} introuvable ou ne supporte pas generateContent avec IMAGE.`);
-        if (response.status === 403) throw new Error("Accès refusé. Vérifiez si votre clé API a les droits pour la génération d'images.");
+        const errorMessage = errorData.error?.message || JSON.stringify(errorData);
+        
+        if (response.status === 400) {
+          throw new Error(`Erreur 400 (Format): ${errorMessage}`);
+        }
         
         await new Promise(r => setTimeout(r, delays[retries]));
         retries++;
       }
 
       if (!response.ok) {
-        const finalError = await response.json().catch(() => ({}));
-        throw new Error(finalError.error?.message || "Échec de la génération.");
+        const finalErrorData = await response.json().catch(() => ({}));
+        throw new Error(finalErrorData.error?.message || "Échec de la génération après tentatives.");
       }
 
       const data = await response.json();
       
-      // Extraction de l'image depuis les parts de la réponse generateContent
+      // Recherche du bloc contenant les données binaires de l'image
       const imagePart = data.candidates?.[0]?.content?.parts?.find(p => p.inlineData);
       
       if (imagePart && imagePart.inlineData?.data) {
@@ -161,7 +163,7 @@ export default function App() {
         setSourceImage(base64Image);
         setActiveTab('convert'); 
       } else {
-        throw new Error("L'IA n'a pas renvoyé d'image (vérifiez les paramètres de sécurité ou le prompt).");
+        throw new Error("L'IA n'a pas renvoyé d'image. Détails : " + JSON.stringify(data));
       }
 
     } catch (err) {
@@ -187,13 +189,11 @@ export default function App() {
         canvas.height = h;
         ctx.clearRect(0, 0, w, h);
 
-        // Cercle gris décalé
         ctx.fillStyle = '#E5E7EB';
         ctx.beginPath();
         ctx.arc(h/2 + off, h/2, h/2, 0, Math.PI * 2);
         ctx.fill();
 
-        // Image avec masque
         ctx.save();
         ctx.beginPath();
         ctx.arc(h/2, h/2, h/2, 0, Math.PI * 2);
@@ -275,8 +275,8 @@ export default function App() {
             )}
             
             {error && (
-              <div className="mt-4 p-4 bg-red-50 border border-red-100 rounded-xl">
-                <p className="text-red-600 text-[11px] font-medium leading-relaxed italic">{error}</p>
+              <div className="mt-4 p-4 bg-red-50 border border-red-100 rounded-xl max-h-[150px] overflow-y-auto">
+                <p className="text-red-600 text-[10px] font-mono leading-tight italic">{error}</p>
               </div>
             )}
           </div>
