@@ -112,14 +112,15 @@ export default function App() {
       const seed = Math.floor(Math.random() * 1000000);
       
       // Construction de l'URL avec les paramètres de la documentation
-      let imageUrl = `https://gen.pollinations.ai/image/${encodedPrompt}?width=1024&height=1024&seed=${seed}&nologo=true&model=flux`;
+      const imageUrl = `https://gen.pollinations.ai/image/${encodedPrompt}?width=1024&height=1024&seed=${seed}&nologo=true&model=flux`;
       
-      // Ajout de la clé API comme paramètre de requête si disponible
-      if (apiKey) {
-        imageUrl += `&key=${apiKey}`;
-      }
-
-      const response = await fetch(imageUrl);
+      // Envoi de la requête avec l'en-tête d'autorisation (Bearer token)
+      const response = await fetch(imageUrl, {
+        method: 'GET',
+        headers: apiKey ? {
+          'Authorization': `Bearer ${apiKey}`
+        } : {}
+      });
 
       if (!response.ok) {
         // Tentative de lecture du message d'erreur JSON
