@@ -249,8 +249,8 @@ export default function App() {
                   className="w-full p-4 border border-slate-200 rounded-[1.8rem] focus:ring-8 focus:ring-indigo-50 focus:border-indigo-400 outline-none text-sm bg-white shadow-inner transition-all font-medium cursor-pointer"
                 >
                   <option value="flux">Flux Schnell</option>
-                  <option value="flux-klein-4b">Flux.2 Klein 4B</option>
-                  <option value="flux-klein-9b">Flux.2 Klein9B</option>
+                  <option value="klein">Flux.2 Klein 4B</option>
+                  <option value="klein-large">Flux.2 Klein9B</option>
                   <option value="gpt-image-1-mini">GPT Image 1 mini</option>
                 </select>
 
