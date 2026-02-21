@@ -303,7 +303,7 @@ export default function App() {
             ) : (
               <div className="text-center opacity-10">
                 <ImageIcon className="mx-auto mb-4" size={72} />
-                <p className="text-xs font-black uppercase tracking-[0.3em]">Studio Output</p>
+                <p className="text-xs font-black uppercase tracking-[0.3em]">Vignette</p>
               </div>
             )}
           </div>
@@ -321,7 +321,7 @@ export default function App() {
               {activeTab === 'generate' && (
                 <a
                   href={sourceImage || '#'}
-                  download="original-illustration.png"
+                  download="illustration-originale.png"
                   className={`animate-fade-slide-up flex-1 py-4 rounded-2xl font-black text-[10px] tracking-widest flex flex-col items-center justify-center gap-1 transition-all duration-300 ease-in-out ${
                     sourceImage 
                       ? 'bg-slate-100 hover:bg-slate-200 text-slate-700 shadow-md hover:translate-y-[-2px]' 
@@ -337,7 +337,7 @@ export default function App() {
 
               <a
                 href={processedImageUrl || '#'}
-                download="mockup-studio-v3.png"
+                download="vignette.png"
                 className={`animate-fade-slide-up flex-[2] py-4 rounded-2xl font-black text-[11px] tracking-widest flex items-center justify-center gap-2 transition-all duration-300 ease-in-out ${
                   processedImageUrl 
                     ? 'bg-indigo-600 hover:bg-indigo-700 text-white shadow-2xl shadow-indigo-200 hover:translate-y-[-2px]' 
