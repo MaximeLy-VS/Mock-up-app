@@ -201,8 +201,8 @@ export default function App() {
                 <ImageIcon className="text-white" size={24} />
               </div>
               <div>
-                <h1 className="text-2xl font-black tracking-tight text-slate-800">Studio Mock-up</h1>
-                <p className="text-slate-400 text-[10px] font-bold uppercase tracking-[0.2em]">Illustration Engine v3</p>
+                <h1 className="text-2xl font-black tracking-tight text-slate-800">Mock-up – Mission</h1>
+                <p className="text-slate-400 text-[10px] font-bold uppercase tracking-[0.2em]">Convertisseur et générateur de vignette</p>
               </div>
             </div>
           </header>
@@ -212,13 +212,13 @@ export default function App() {
               onClick={() => setActiveTab('convert')}
               className={`flex-1 py-3 text-sm font-bold rounded-xl flex items-center justify-center gap-2 transition-all ${activeTab === 'convert' ? 'bg-white shadow-md text-indigo-600' : 'text-slate-500 hover:text-slate-700'}`}
             >
-              <UploadCloud size={18} /> Import
+              <UploadCloud size={18} />convertisseur d'image
             </button>
             <button
               onClick={() => setActiveTab('generate')}
               className={`flex-1 py-3 text-sm font-bold rounded-xl flex items-center justify-center gap-2 transition-all ${activeTab === 'generate' ? 'bg-white shadow-md text-indigo-600' : 'text-slate-500 hover:text-slate-700'}`}
             >
-              <Zap size={18} /> IA Libre
+              <Zap size={18} /> Générateur de vignette
             </button>
           </div>
 
