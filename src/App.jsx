@@ -192,41 +192,54 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] flex items-center justify-center p-4 font-sans text-slate-900">
-      <div className="max-w-4xl w-full bg-white rounded-[2.5rem] shadow-2xl shadow-indigo-100 overflow-hidden flex flex-col md:flex-row border border-slate-100">
+      <style>{`
+        @keyframes fadeSlideUp {
+          from { opacity: 0; transform: translateY(15px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fade-slide-up {
+          animation: fadeSlideUp 0.5s ease-in-out forwards;
+        }
+        .animate-fade-slide-up-delayed {
+          animation: fadeSlideUp 0.5s ease-in-out 0.15s forwards;
+          opacity: 0;
+        }
+      `}</style>
+      <div className="max-w-4xl w-full bg-white rounded-[2.5rem] shadow-2xl shadow-indigo-100 overflow-hidden flex flex-col md:flex-row border border-slate-100 animate-fade-slide-up">
         
         <div className="w-full md:w-1/2 bg-slate-50/50 p-10 flex flex-col border-b md:border-b-0 md:border-r border-slate-100">
-          <header className="mb-10">
+          <header className="mb-10 animate-fade-slide-up">
             <div className="flex items-center gap-4 mb-3">
               <div className="p-3 bg-indigo-600 rounded-2xl shadow-xl shadow-indigo-200">
                 <ImageIcon className="text-white" size={24} />
               </div>
               <div>
-                <h1 className="text-2xl font-black tracking-tight text-slate-800">Mock up&nbsp;–&nbsp;Mission</h1>
-                <p className="text-slate-400 text-[10px] font-bold uppercase tracking-[0.2em]">Convertisseur et générateur de&nbsp;vignette</p>
+                <h1 className="text-2xl font-black tracking-tight text-slate-800">Mock-up – Mission</h1>
+                <p className="text-slate-400 text-[10px] font-bold uppercase tracking-[0.2em]">Convertisseur et générateur de vignette</p>
               </div>
             </div>
           </header>
 
-          <div className="flex bg-slate-200/50 p-1.5 rounded-2xl mb-10">
+          <div className="flex bg-slate-200/50 p-1.5 rounded-2xl mb-10 animate-fade-slide-up-delayed">
             <button
               onClick={() => setActiveTab('convert')}
-              className={`flex-1 py-3 text-sm font-bold rounded-xl flex items-center justify-center gap-2 transition-all ${activeTab === 'convert' ? 'bg-white shadow-md text-indigo-600' : 'text-slate-500 hover:text-slate-700'}`}
+              className={`flex-1 py-3 text-sm font-bold rounded-xl flex items-center justify-center gap-2 transition-all duration-300 ease-in-out ${activeTab === 'convert' ? 'bg-white shadow-md text-indigo-600' : 'text-slate-500 hover:text-slate-700'}`}
             >
               <UploadCloud size={18} /> Convertisseur
             </button>
             <button
               onClick={() => setActiveTab('generate')}
-              className={`flex-1 py-3 text-sm font-bold rounded-xl flex items-center justify-center gap-2 transition-all ${activeTab === 'generate' ? 'bg-white shadow-md text-indigo-600' : 'text-slate-500 hover:text-slate-700'}`}
+              className={`flex-1 py-3 text-sm font-bold rounded-xl flex items-center justify-center gap-2 transition-all duration-300 ease-in-out ${activeTab === 'generate' ? 'bg-white shadow-md text-indigo-600' : 'text-slate-500 hover:text-slate-700'}`}
             >
-              <Zap size={18} /> Générateur IA
+              <Zap size={18} /> Génération par IA
             </button>
           </div>
 
-          <div className="flex-1 flex flex-col min-h-[320px]">
+          <div className="flex-1 flex flex-col min-h-[320px]" key={activeTab}>
             {activeTab === 'convert' ? (
               <div 
                 onClick={() => fileInputRef.current?.click()}
-                className="flex-1 border-2 border-dashed border-slate-200 rounded-[2rem] p-8 text-center cursor-pointer hover:border-indigo-400 hover:bg-white transition-all flex flex-col items-center justify-center group"
+                className="animate-fade-slide-up flex-1 border-2 border-dashed border-slate-200 rounded-[2rem] p-8 text-center cursor-pointer hover:border-indigo-400 hover:bg-white transition-all duration-300 ease-in-out flex flex-col items-center justify-center group"
               >
                 <div className="w-20 h-20 bg-white rounded-[1.5rem] shadow-sm border border-slate-50 flex items-center justify-center mb-5 group-hover:scale-105 transition-transform group-hover:shadow-lg">
                   <UploadCloud className="text-indigo-600" size={36} />
@@ -236,7 +249,7 @@ export default function App() {
                 <input type="file" ref={fileInputRef} onChange={handleFileUpload} accept="image/*" className="hidden" />
               </div>
             ) : (
-              <div className="space-y-5">
+              <div className="space-y-5 animate-fade-slide-up">
                 <div className="px-4 py-2.5 bg-indigo-50 border border-indigo-100 rounded-xl">
                   <p className="text-[10px] text-indigo-600 font-black leading-tight uppercase tracking-wider">
                     Moteur IA : Authentifié via gen.pollinations.ai
@@ -246,7 +259,7 @@ export default function App() {
                 <select
                   value={selectedModel}
                   onChange={(e) => setSelectedModel(e.target.value)}
-                  className="w-full p-4 border border-slate-200 rounded-[1.8rem] focus:ring-8 focus:ring-indigo-50 focus:border-indigo-400 outline-none text-sm bg-white shadow-inner transition-all font-medium cursor-pointer"
+                  className="w-full p-4 border border-slate-200 rounded-[1.8rem] focus:ring-8 focus:ring-indigo-50 focus:border-indigo-400 outline-none text-sm bg-white shadow-inner transition-all duration-300 ease-in-out font-medium cursor-pointer"
                 >
                   <option value="flux">Flux Schnell</option>
                   <option value="klein">Flux.2 Klein 4B</option>
@@ -258,12 +271,12 @@ export default function App() {
                   value={prompt}
                   onChange={(e) => setPrompt(e.target.value)}
                   placeholder="Décrivez l'illustration souhaitée ici..."
-                  className="w-full h-44 p-6 border border-slate-200 rounded-[1.8rem] focus:ring-8 focus:ring-indigo-50 focus:border-indigo-400 outline-none resize-none text-sm bg-white shadow-inner transition-all font-medium"
+                  className="w-full h-44 p-6 border border-slate-200 rounded-[1.8rem] focus:ring-8 focus:ring-indigo-50 focus:border-indigo-400 outline-none resize-none text-sm bg-white shadow-inner transition-all duration-300 ease-in-out font-medium"
                 />
                 <button
                   onClick={handleGenerateImage}
                   disabled={isGenerating || !prompt.trim()}
-                  className="w-full bg-slate-900 text-white font-black py-4 rounded-2xl hover:bg-indigo-600 transition-all flex items-center justify-center gap-3 disabled:bg-slate-200 shadow-2xl shadow-slate-200 hover:scale-[1.02] active:scale-95"
+                  className="w-full bg-slate-900 text-white font-black py-4 rounded-2xl hover:bg-indigo-600 transition-all duration-300 ease-in-out flex items-center justify-center gap-3 disabled:bg-slate-200 shadow-2xl shadow-slate-200 hover:scale-[1.02] active:scale-95"
                 >
                   {isGenerating ? <Loader2 className="animate-spin" size={20} /> : <Zap size={20} />}
                   GÉNÉRER L'ILLUSTRATION
@@ -272,7 +285,7 @@ export default function App() {
             )}
             
             {error && (
-              <div className="mt-6 p-4 bg-red-50 border border-red-100 rounded-2xl">
+              <div className="mt-6 p-4 bg-red-50 border border-red-100 rounded-2xl animate-fade-slide-up">
                 <p className="text-red-600 text-[11px] font-black italic text-center">{error}</p>
               </div>
             )}
@@ -281,11 +294,12 @@ export default function App() {
 
         <div className="w-full md:w-1/2 p-12 flex flex-col items-center justify-center bg-white">
           <div 
-            className="mb-12 w-full max-w-[340px] aspect-[340/300] flex items-center justify-center bg-[#FAFAFA] border border-slate-50 rounded-[2.5rem] relative overflow-hidden shadow-2xl shadow-slate-100" 
+            key={processedImageUrl ? 'image' : 'placeholder'}
+            className="mb-12 w-full max-w-[340px] aspect-[340/300] flex items-center justify-center bg-[#FAFAFA] border border-slate-50 rounded-[2.5rem] relative overflow-hidden shadow-2xl shadow-slate-100 animate-fade-slide-up" 
             style={{ backgroundImage: 'radial-gradient(#E2E8F0 2px, transparent 2px)', backgroundSize: '28px 28px' }}
           >
             {processedImageUrl ? (
-              <img src={processedImageUrl} alt="Preview" className="w-full h-full object-contain animate-in fade-in zoom-in duration-700" />
+              <img src={processedImageUrl} alt="Preview" className="w-full h-full object-contain" />
             ) : (
               <div className="text-center opacity-10">
                 <ImageIcon className="mx-auto mb-4" size={72} />
@@ -294,7 +308,7 @@ export default function App() {
             )}
           </div>
 
-          <div className="w-full max-w-[280px] space-y-8">
+          <div className="w-full max-w-[320px] space-y-8 animate-fade-slide-up-delayed">
             <div className="text-center">
               <div className="inline-flex items-center gap-2.5 px-4 py-1.5 bg-emerald-50 text-emerald-600 text-[10px] font-black uppercase rounded-full mb-4 tracking-tight border border-emerald-100">
                 <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" />
@@ -303,18 +317,38 @@ export default function App() {
               <p className="text-[11px] text-slate-400 font-bold tracking-wide">340x300px • 90 DPI • PNG Alpha</p>
             </div>
 
-            <a
-              href={processedImageUrl || '#'}
-              download="mockup-studio-v3.png"
-              className={`w-full py-5 rounded-2xl font-black text-xs tracking-widest flex items-center justify-center gap-3 transition-all ${
-                processedImageUrl 
-                  ? 'bg-indigo-600 hover:bg-indigo-700 text-white shadow-2xl shadow-indigo-200 hover:translate-y-[-2px]' 
-                  : 'bg-slate-100 text-slate-300 cursor-not-allowed'
-              }`}
-              onClick={(e) => !processedImageUrl && e.preventDefault()}
-            >
-              <Download size={18} /> TÉLÉCHARGER LE PNG
-            </a>
+            <div className="flex gap-3 w-full" key={sourceImage ? 'has-source' : 'no-source'}>
+              {activeTab === 'generate' && (
+                <a
+                  href={sourceImage || '#'}
+                  download="original-illustration.png"
+                  className={`animate-fade-slide-up flex-1 py-4 rounded-2xl font-black text-[10px] tracking-widest flex flex-col items-center justify-center gap-1 transition-all duration-300 ease-in-out ${
+                    sourceImage 
+                      ? 'bg-slate-100 hover:bg-slate-200 text-slate-700 shadow-md hover:translate-y-[-2px]' 
+                      : 'bg-slate-50 text-slate-300 cursor-not-allowed'
+                  }`}
+                  onClick={(e) => !sourceImage && e.preventDefault()}
+                  title="Télécharger l'image originale"
+                >
+                  <Download size={16} />
+                  <span>ORIGINAL</span>
+                </a>
+              )}
+
+              <a
+                href={processedImageUrl || '#'}
+                download="mockup-studio-v3.png"
+                className={`animate-fade-slide-up flex-[2] py-4 rounded-2xl font-black text-[11px] tracking-widest flex items-center justify-center gap-2 transition-all duration-300 ease-in-out ${
+                  processedImageUrl 
+                    ? 'bg-indigo-600 hover:bg-indigo-700 text-white shadow-2xl shadow-indigo-200 hover:translate-y-[-2px]' 
+                    : 'bg-slate-100 text-slate-300 cursor-not-allowed'
+                }`}
+                onClick={(e) => !processedImageUrl && e.preventDefault()}
+              >
+                <Download size={18} />
+                <span>VIGNETTE PNG</span>
+              </a>
+            </div>
           </div>
 
           <canvas ref={canvasRef} className="hidden" />
