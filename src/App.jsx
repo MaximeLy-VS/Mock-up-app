@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { UploadCloud, Image as ImageIcon, Wand2, Download, Loader2, Zap, LayoutTemplate } from 'lucide-react';
+import backgroundImage from './assets/Background.jpg';
 
 // Fonction utilitaire pour injecter la métadonnée 90 DPI (pHYs chunk) dans un PNG en Base64
 const setDpiInPngBase64 = (base64Image, dpi) => {
@@ -213,7 +214,8 @@ export default function App() {
   }, [sourceImage, outputFormat]); // Ajout de outputFormat dans les dépendances pour redessiner au changement
 
   return (
-    <div className="min-h-screen Background flex items-center justify-center p-4 font-sans text-slate-900">
+      <div className="min-h-screen flex items-center justify-center p-4 font-sans text-slate-900 bg-cover bg-center bg-no-repeat bg-fixed"
+      style={{ backgroundImage: `url(${backgroundImage})` }}>
       <style>{`
         @keyframes fadeSlideUp {
           from { opacity: 0; transform: translateY(15px); }
