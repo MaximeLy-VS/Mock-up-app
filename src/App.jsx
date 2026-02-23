@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { UploadCloud, Image as ImageIcon, Wand2, Download, Loader2, Zap } from 'lucide-react';
+import { UploadCloud, Image as ImageIcon, Wand2, Download, Loader2, Zap, LayoutTemplate } from 'lucide-react';
 
 // Fonction utilitaire pour injecter la métadonnée 90 DPI (pHYs chunk) dans un PNG en Base64
 const setDpiInPngBase64 = (base64Image, dpi) => {
@@ -26,21 +26,10 @@ const setDpiInPngBase64 = (base64Image, dpi) => {
     const crcTable = [];
     for (let n = 0; n < 256; n++) {
       let c = n;
-      for (let k = 0; k < 8; k++) c = (c & 1) ? (0xEDB88320 ^ (c >>> 1)) : (0xEDB88320 ^ (c >>> 1)); // Simplified for speed
+      for (let k = 0; k < 8; k++) c = (c & 1) ? (0xEDB88320 ^ (c >>> 1)) : (0xEDB88320 ^ (c >>> 1));
       crcTable[n] = c;
     }
-    // Correct CRC calculation
-    const getCrc = (buf) => {
-      let crc = 0 ^ (-1);
-      for (let i = 4; i < buf.length - 4; i++) {
-        crc = (crc >>> 8) ^ crcTable[(crc ^ buf[i]) & 0xFF];
-      }
-      return (crc ^ (-1)) >>> 0;
-    };
 
-    // Note: crcTable generation and loop logic is preserved from previous functional version
-    // but the key fix is the API call below.
-    
     let offset = 8;
     while (offset < dataArray.length) {
       const length = (dataArray[offset] << 24) | (dataArray[offset + 1] << 16) | (dataArray[offset + 2] << 8) | dataArray[offset + 3];
@@ -70,6 +59,7 @@ const setDpiInPngBase64 = (base64Image, dpi) => {
 
 export default function App() {
   const [activeTab, setActiveTab] = useState('convert');
+  const [outputFormat, setOutputFormat] = useState('vignette'); // 'vignette' ou 'banner'
   const [sourceImage, setSourceImage] = useState(null);
   const [processedImageUrl, setProcessedImageUrl] = useState(null);
   const [prompt, setPrompt] = useState('');
@@ -92,10 +82,6 @@ export default function App() {
     }
   };
 
-  /**
-   * Utilisation de l'API Pollinations (Enterprise/Authenticated)
-   * On passe la clé via le paramètre de requête ?key= pour éviter les erreurs 401 liées aux headers CORS
-   */
   const handleGenerateImage = async () => {
     if (!prompt.trim()) {
       setError("Veuillez entrer une description.");
@@ -106,16 +92,17 @@ export default function App() {
     setError('');
     
     try {
-      // Récupération de la clé API Pollinations via Vite
       const apiKey = import.meta.env.VITE_POLLINATIONS_API_KEY;
 
       const encodedPrompt = encodeURIComponent(prompt + ", professional commercial photography, high quality, hyper realistic, centered composition");
       const seed = Math.floor(Math.random() * 1000000);
       
-      // Construction de l'URL avec la variable selectedModel
-      const imageUrl = `https://gen.pollinations.ai/image/${encodedPrompt}?width=800&height=800&seed=${seed}&nologo=true&model=${selectedModel}`;
+      // On ajuste la taille demandée à l'IA en fonction du format de sortie pour un meilleur rendu
+      const aiWidth = outputFormat === 'banner' ? 2048 : 800;
+      const aiHeight = outputFormat === 'banner' ? 512 : 800;
+
+      const imageUrl = `https://gen.pollinations.ai/image/${encodedPrompt}?width=${aiWidth}&height=${aiHeight}&seed=${seed}&nologo=true&model=${selectedModel}`;
       
-      // Envoi de la requête avec l'en-tête d'autorisation (Bearer token)
       const response = await fetch(imageUrl, {
         method: 'GET',
         headers: apiKey ? {
@@ -124,7 +111,6 @@ export default function App() {
       });
 
       if (!response.ok) {
-        // Tentative de lecture du message d'erreur JSON
         const errorData = await response.json().catch(() => ({}));
         const message = errorData.error?.message || "Le service de génération ne répond pas.";
         
@@ -157,38 +143,74 @@ export default function App() {
       img.crossOrigin = "anonymous"; 
       
       img.onload = () => {
-        const h = 300;
-        const off = 60; 
-        const w = h + off; 
-        
-        canvas.width = w;
-        canvas.height = h;
-        ctx.clearRect(0, 0, w, h);
+        if (outputFormat === 'vignette') {
+          // --- LOGIQUE VIGNETTE 360x300 PNG ---
+          const h = 300;
+          const off = 60; 
+          const w = h + off; 
+          
+          canvas.width = w;
+          canvas.height = h;
+          ctx.clearRect(0, 0, w, h);
 
-        ctx.fillStyle = '#dfdfdf';
-        ctx.beginPath();
-        ctx.arc(h/2 + off, h/2, h/2, 0, Math.PI * 2);
-        ctx.fill();
+          ctx.fillStyle = '#dfdfdf';
+          ctx.beginPath();
+          ctx.arc(h/2 + off, h/2, h/2, 0, Math.PI * 2);
+          ctx.fill();
 
-        ctx.save();
-        ctx.beginPath();
-        ctx.arc(h/2, h/2, h/2, 0, Math.PI * 2);
-        ctx.clip(); 
+          ctx.save();
+          ctx.beginPath();
+          ctx.arc(h/2, h/2, h/2, 0, Math.PI * 2);
+          ctx.clip(); 
 
-        const ratio = img.width / img.height;
-        let dW = h, dH = h, dX = 0, dY = 0;
-        if (ratio < 1) { dH = h / ratio; dY = (h - dH) / 2; }
-        else { dW = h * ratio; dX = (h - dW) / 2; }
+          const ratio = img.width / img.height;
+          let dW = h, dH = h, dX = 0, dY = 0;
+          if (ratio < 1) { dH = h / ratio; dY = (h - dH) / 2; }
+          else { dW = h * ratio; dX = (h - dW) / 2; }
 
-        ctx.drawImage(img, dX, dY, dW, dH);
-        ctx.restore(); 
+          ctx.drawImage(img, dX, dY, dW, dH);
+          ctx.restore(); 
 
-        const raw = canvas.toDataURL('image/png');
-        setProcessedImageUrl(setDpiInPngBase64(raw, 90));
+          const raw = canvas.toDataURL('image/png');
+          setProcessedImageUrl(setDpiInPngBase64(raw, 90));
+          
+        } else if (outputFormat === 'banner') {
+          // --- LOGIQUE BANNIÈRE 2400x372 JPEG 30% ---
+          canvas.width = 2400;
+          canvas.height = 372;
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+          // Remplir d'un fond blanc au cas où l'image aurait de la transparence
+          ctx.fillStyle = '#FFFFFF';
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+          const imgRatio = img.width / img.height;
+          const canvasRatio = canvas.width / canvas.height;
+          let drawW, drawH, drawX, drawY;
+
+          // Calcul pour un rendu "Cover" (remplissage centré)
+          if (imgRatio > canvasRatio) {
+            drawH = canvas.height;
+            drawW = img.width * (canvas.height / img.height);
+            drawX = (canvas.width - drawW) / 2;
+            drawY = 0;
+          } else {
+            drawW = canvas.width;
+            drawH = img.height * (canvas.width / img.width);
+            drawX = 0;
+            drawY = (canvas.height - drawH) / 2;
+          }
+
+          ctx.drawImage(img, drawX, drawY, drawW, drawH);
+          
+          // Export en JPEG avec qualité 30% (0.3)
+          const rawUrl = canvas.toDataURL('image/jpeg', 0.3);
+          setProcessedImageUrl(rawUrl);
+        }
       };
       img.src = sourceImage;
     }
-  }, [sourceImage]);
+  }, [sourceImage, outputFormat]); // Ajout de outputFormat dans les dépendances pour redessiner au changement
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] flex items-center justify-center p-4 font-sans text-slate-900">
@@ -208,30 +230,45 @@ export default function App() {
       <div className="max-w-4xl w-full bg-white rounded-[2.5rem] shadow-2xl shadow-indigo-100 overflow-hidden flex flex-col md:flex-row border border-slate-100 animate-fade-slide-up">
         
         <div className="w-full md:w-1/2 bg-slate-50/50 p-10 flex flex-col border-b md:border-b-0 md:border-r border-slate-100">
-          <header className="mb-10 animate-fade-slide-up">
+          <header className="mb-8 animate-fade-slide-up">
             <div className="flex items-center gap-4 mb-3">
               <div className="p-3 bg-indigo-600 rounded-2xl shadow-xl shadow-indigo-200">
                 <ImageIcon className="text-white" size={24} />
               </div>
               <div>
                 <h1 className="text-2xl font-black tracking-tight text-slate-800">Mock-up – Mission</h1>
-                <p className="text-slate-400 text-[10px] font-bold uppercase tracking-[0.2em]">Convertisseur et générateur de vignette</p>
+                <p className="text-slate-400 text-[10px] font-bold uppercase tracking-[0.2em]">Convertisseur et générateur</p>
               </div>
             </div>
           </header>
 
-          <div className="flex bg-slate-200/50 p-1.5 rounded-2xl mb-10 animate-fade-slide-up-delayed">
+          <div className="flex bg-slate-200/50 p-1.5 rounded-xl mb-6 animate-fade-slide-up-delayed">
+            <button
+              onClick={() => setOutputFormat('vignette')}
+              className={`flex-1 py-2 text-xs font-bold rounded-lg flex items-center justify-center gap-2 transition-all duration-300 ease-in-out ${outputFormat === 'vignette' ? 'bg-white shadow-sm text-indigo-700' : 'text-slate-500 hover:text-slate-700'}`}
+            >
+              <LayoutTemplate size={14} /> Vignette
+            </button>
+            <button
+              onClick={() => setOutputFormat('banner')}
+              className={`flex-1 py-2 text-xs font-bold rounded-lg flex items-center justify-center gap-2 transition-all duration-300 ease-in-out ${outputFormat === 'banner' ? 'bg-white shadow-sm text-indigo-700' : 'text-slate-500 hover:text-slate-700'}`}
+            >
+              <ImageIcon size={14} /> Bannière
+            </button>
+          </div>
+
+          <div className="flex bg-slate-200/50 p-1.5 rounded-2xl mb-8 animate-fade-slide-up-delayed">
             <button
               onClick={() => setActiveTab('convert')}
               className={`flex-1 py-3 text-sm font-bold rounded-xl flex items-center justify-center gap-2 transition-all duration-300 ease-in-out ${activeTab === 'convert' ? 'bg-white shadow-md text-indigo-600' : 'text-slate-500 hover:text-slate-700'}`}
             >
-              <UploadCloud size={18} /> Convertisseur
+              <UploadCloud size={18} /> Import
             </button>
             <button
               onClick={() => setActiveTab('generate')}
               className={`flex-1 py-3 text-sm font-bold rounded-xl flex items-center justify-center gap-2 transition-all duration-300 ease-in-out ${activeTab === 'generate' ? 'bg-white shadow-md text-indigo-600' : 'text-slate-500 hover:text-slate-700'}`}
             >
-              <Zap size={18} /> Génération par IA
+              <Zap size={18} /> Génération IA
             </button>
           </div>
 
@@ -250,9 +287,12 @@ export default function App() {
               </div>
             ) : (
               <div className="space-y-5 animate-fade-slide-up">
-                <div className="px-4 py-2.5 bg-indigo-50 border border-indigo-100 rounded-xl">
+                <div className="px-4 py-2.5 bg-indigo-50 border border-indigo-100 rounded-xl flex justify-between items-center">
                   <p className="text-[10px] text-indigo-600 font-black leading-tight uppercase tracking-wider">
-                    Moteur IA : Authentifié via gen.pollinations.ai
+                    Moteur IA : Pollinations
+                  </p>
+                  <p className="text-[9px] text-indigo-400 font-bold uppercase tracking-wider">
+                    {outputFormat === 'banner' ? 'Format : Paysage' : 'Format : Carré'}
                   </p>
                 </div>
 
@@ -271,7 +311,7 @@ export default function App() {
                   value={prompt}
                   onChange={(e) => setPrompt(e.target.value)}
                   placeholder="Décrivez l'illustration souhaitée ici..."
-                  className="w-full h-44 p-6 border border-slate-200 rounded-[1.8rem] focus:ring-8 focus:ring-indigo-50 focus:border-indigo-400 outline-none resize-none text-sm bg-white shadow-inner transition-all duration-300 ease-in-out font-medium"
+                  className="w-full h-36 p-6 border border-slate-200 rounded-[1.8rem] focus:ring-8 focus:ring-indigo-50 focus:border-indigo-400 outline-none resize-none text-sm bg-white shadow-inner transition-all duration-300 ease-in-out font-medium"
                 />
                 <button
                   onClick={handleGenerateImage}
@@ -294,16 +334,22 @@ export default function App() {
 
         <div className="w-full md:w-1/2 p-12 flex flex-col items-center justify-center bg-white">
           <div 
-            key={processedImageUrl ? 'image' : 'placeholder'}
-            className="mb-12 w-full max-w-[360px] aspect-[360/300] flex items-center justify-center bg-[#FAFAFA] border border-slate-50 rounded-[2.5rem] relative overflow-hidden shadow-2xl shadow-slate-100 animate-fade-slide-up" 
+            key={`${processedImageUrl ? 'image' : 'placeholder'}-${outputFormat}`}
+            className={`mb-12 w-full flex items-center justify-center bg-[#FAFAFA] border border-slate-50 relative overflow-hidden shadow-2xl shadow-slate-100 animate-fade-slide-up transition-all duration-500 ${
+              outputFormat === 'vignette' 
+                ? 'max-w-[360px] aspect-[360/300] rounded-[2.5rem]' 
+                : 'max-w-full aspect-[2400/372] rounded-xl'
+            }`} 
             style={{ backgroundImage: 'radial-gradient(#E2E8F0 2px, transparent 2px)', backgroundSize: '28px 28px' }}
           >
             {processedImageUrl ? (
-              <img src={processedImageUrl} alt="Preview" className="w-full h-full object-contain" />
+              <img src={processedImageUrl} alt="Preview" className="w-full h-full object-cover" />
             ) : (
-              <div className="text-center opacity-10">
-                <ImageIcon className="mx-auto mb-4" size={72} />
-                <p className="text-xs font-black uppercase tracking-[0.3em]">Vignette</p>
+              <div className="text-center opacity-10 flex flex-col items-center">
+                <ImageIcon className="mb-2" size={outputFormat === 'banner' ? 32 : 72} />
+                <p className={`font-black uppercase tracking-[0.3em] ${outputFormat === 'banner' ? 'text-[8px]' : 'text-xs'}`}>
+                  {outputFormat === 'banner' ? 'Bannière' : 'Vignette'}
+                </p>
               </div>
             )}
           </div>
@@ -314,7 +360,11 @@ export default function App() {
                 <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" />
                 Rendu Optimisé
               </div>
-              <p className="text-[11px] text-slate-400 font-bold tracking-wide">360x300px • 90 DPI • PNG Alpha</p>
+              <p className="text-[11px] text-slate-400 font-bold tracking-wide transition-all">
+                {outputFormat === 'vignette' 
+                  ? '360x300px • 90 DPI • PNG Alpha' 
+                  : '2400x372px • JPEG Qualité 30%'}
+              </p>
             </div>
 
             <div className="flex gap-3 w-full" key={sourceImage ? 'has-source' : 'no-source'}>
@@ -337,7 +387,7 @@ export default function App() {
 
               <a
                 href={processedImageUrl || '#'}
-                download="vignette.png"
+                download={outputFormat === 'vignette' ? 'vignette.png' : 'banniere.jpg'}
                 className={`animate-fade-slide-up flex-[2] py-4 rounded-2xl font-black text-[11px] tracking-widest flex items-center justify-center gap-2 transition-all duration-300 ease-in-out ${
                   processedImageUrl 
                     ? 'bg-indigo-600 hover:bg-indigo-700 text-white shadow-2xl shadow-indigo-200 hover:translate-y-[-2px]' 
@@ -346,7 +396,7 @@ export default function App() {
                 onClick={(e) => !processedImageUrl && e.preventDefault()}
               >
                 <Download size={18} />
-                <span>VIGNETTE PNG</span>
+                <span>{outputFormat === 'vignette' ? 'VIGNETTE PNG' : 'BANNIÈRE JPG'}</span>
               </a>
             </div>
           </div>
