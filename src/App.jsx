@@ -175,7 +175,7 @@ export default function App() {
           setProcessedImageUrl(setDpiInPngBase64(raw, 90));
           
         } else if (outputFormat === 'banner') {
-          // --- LOGIQUE BANNIÈRE 2400x372 JPEG 30% ---
+          // --- LOGIQUE BANNIÈRE 2400x372 JPEG 50% ---
           canvas.width = 2400;
           canvas.height = 372;
           ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -203,8 +203,8 @@ export default function App() {
 
           ctx.drawImage(img, drawX, drawY, drawW, drawH);
           
-          // Export en JPEG avec qualité 30% (0.3)
-          const rawUrl = canvas.toDataURL('image/jpeg', 0.3);
+          // Export en JPEG avec qualité 50% (0.5)
+          const rawUrl = canvas.toDataURL('image/jpeg', 0.5);
           setProcessedImageUrl(rawUrl);
         }
       };
@@ -363,7 +363,7 @@ export default function App() {
               <p className="text-[11px] text-slate-400 font-bold tracking-wide transition-all">
                 {outputFormat === 'vignette' 
                   ? '360x300px • 90 DPI • PNG Alpha' 
-                  : '2400x372px • JPEG Qualité 30%'}
+                  : '2400x372px • JPEG Qualité 50 %'}
               </p>
             </div>
 
