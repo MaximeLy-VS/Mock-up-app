@@ -402,8 +402,7 @@ export default function App() {
               </a>
             </div>
           </div>
-
-          <canvas ref={canvasRef} className="hidden" />
+          <div className="mt-8 justify-center"><p className="text-[11px] text-slate-400 font-bold tracking-wide transition-all">Maxime Lyon</p></div>   
         </div>
       </div>
     </div>
