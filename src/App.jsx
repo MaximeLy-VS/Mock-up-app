@@ -158,14 +158,14 @@ export default function App() {
       
       img.onload = () => {
         const h = 300;
-        const off = 40; 
+        const off = 60; 
         const w = h + off; 
         
         canvas.width = w;
         canvas.height = h;
         ctx.clearRect(0, 0, w, h);
 
-        ctx.fillStyle = '#F3F4F6';
+        ctx.fillStyle = '#dfdfdf';
         ctx.beginPath();
         ctx.arc(h/2 + off, h/2, h/2, 0, Math.PI * 2);
         ctx.fill();
