@@ -236,7 +236,7 @@ export default function App() {
                 <ImageIcon className="text-white" size={24} />
               </div>
               <div>
-                <h1 className="text-2xl font-black tracking-tight text-slate-800">Illustrations – Mock-up</h1>
+                <h1 className="text-2xl font-black tracking-tight text-slate-800">Illustration – Mock-up</h1>
                 <p className="text-slate-400 text-[10px] font-bold uppercase tracking-[0.2em]">Convertisseur et générateur</p>
               </div>
             </div>
