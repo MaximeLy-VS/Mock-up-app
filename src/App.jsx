@@ -295,7 +295,7 @@ export default function App() {
         <div className="w-full md:w-1/2 p-12 flex flex-col items-center justify-center bg-white">
           <div 
             key={processedImageUrl ? 'image' : 'placeholder'}
-            className="mb-12 w-full max-w-[340px] aspect-[340/300] flex items-center justify-center bg-[#FAFAFA] border border-slate-50 rounded-[2.5rem] relative overflow-hidden shadow-2xl shadow-slate-100 animate-fade-slide-up" 
+            className="mb-12 w-full max-w-[360px] aspect-[360/300] flex items-center justify-center bg-[#FAFAFA] border border-slate-50 rounded-[2.5rem] relative overflow-hidden shadow-2xl shadow-slate-100 animate-fade-slide-up" 
             style={{ backgroundImage: 'radial-gradient(#E2E8F0 2px, transparent 2px)', backgroundSize: '28px 28px' }}
           >
             {processedImageUrl ? (
@@ -314,7 +314,7 @@ export default function App() {
                 <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" />
                 Rendu Optimisé
               </div>
-              <p className="text-[11px] text-slate-400 font-bold tracking-wide">340x300px • 90 DPI • PNG Alpha</p>
+              <p className="text-[11px] text-slate-400 font-bold tracking-wide">360x300px • 90 DPI • PNG Alpha</p>
             </div>
 
             <div className="flex gap-3 w-full" key={sourceImage ? 'has-source' : 'no-source'}>
