@@ -213,7 +213,7 @@ export default function App() {
   }, [sourceImage, outputFormat]); // Ajout de outputFormat dans les dépendances pour redessiner au changement
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] flex items-center justify-center p-4 font-sans text-slate-900">
+    <div className="min-h-screen Background flex items-center justify-center p-4 font-sans text-slate-900">
       <style>{`
         @keyframes fadeSlideUp {
           from { opacity: 0; transform: translateY(15px); }
