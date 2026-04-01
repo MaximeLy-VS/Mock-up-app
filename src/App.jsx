@@ -145,14 +145,23 @@ export default function App() {
       
       img.onload = () => {
         if (outputFormat === 'vignette') {
-          // --- LOGIQUE VIGNETTE 360x300 PNG ---
-          const h = 300;
-          const off = 60; 
-          const w = h + off; 
+          // --- LOGIQUE VIGNETTE CARRÉE AVEC MARGES (398x398 PNG) ---
+          const innerW = 360;
+          const innerH = 300;
+          const marginX = 19;
+          const marginY = 49; // Ajusté de 48 à 49px pour obtenir un carré parfait de 398x398
           
-          canvas.width = w;
-          canvas.height = h;
-          ctx.clearRect(0, 0, w, h);
+          canvas.width = innerW + (marginX * 2);
+          canvas.height = innerH + (marginY * 2);
+          ctx.clearRect(0, 0, canvas.width, canvas.height); // Fond totalement transparent
+
+          ctx.save();
+          // On décale le dessin pour inclure les marges transparentes
+          ctx.translate(marginX, marginY);
+
+          const h = innerH; // 300
+          const off = 60; 
+          const w = h + off; // 360
 
           ctx.fillStyle = '#dfdfdf';
           ctx.beginPath();
@@ -171,6 +180,8 @@ export default function App() {
 
           ctx.drawImage(img, dX, dY, dW, dH);
           ctx.restore(); 
+          
+          ctx.restore(); // Fin du décalage des marges
 
           const raw = canvas.toDataURL('image/png');
           setProcessedImageUrl(setDpiInPngBase64(raw, 90));
@@ -214,8 +225,9 @@ export default function App() {
   }, [sourceImage, outputFormat]); // Ajout de outputFormat dans les dépendances pour redessiner au changement
 
   return (
-      <div className="min-h-screen flex items-center justify-center p-4 font-sans text-slate-900 bg-cover bg-center bg-no-repeat bg-fixed"
+          <div className="min-h-screen flex items-center justify-center p-4 font-sans text-slate-900 bg-cover bg-center bg-no-repeat bg-fixed"
       style={{ backgroundImage: `url(${backgroundImage})` }}>
+      <div className="min-h-screen flex items-center justify-center p-4 font-sans text-slate-900 bg-cover bg-center bg-no-repeat bg-fixed bg-slate-100">
       <style>{`
         @keyframes fadeSlideUp {
           from { opacity: 0; transform: translateY(15px); }
@@ -339,7 +351,7 @@ export default function App() {
             key={`${processedImageUrl ? 'image' : 'placeholder'}-${outputFormat}`}
             className={`mb-12 w-full flex items-center justify-center bg-[#FAFAFA] border border-slate-50 relative overflow-hidden shadow-2xl shadow-slate-100 animate-fade-slide-up transition-all duration-500 ${
               outputFormat === 'vignette' 
-                ? 'max-w-[360px] aspect-[360/300] rounded-[2.5rem]' 
+                ? 'max-w-[398px] aspect-square rounded-[2.5rem]' 
                 : 'max-w-full aspect-[2400/372] rounded-xl'
             }`} 
             style={{ backgroundImage: 'radial-gradient(#E2E8F0 2px, transparent 2px)', backgroundSize: '28px 28px' }}
@@ -364,8 +376,8 @@ export default function App() {
               </div>
               <p className="text-[11px] text-slate-400 font-bold tracking-wide transition-all">
                 {outputFormat === 'vignette' 
-                  ? '360x300px • 90 DPI • PNG Alpha' 
-                  : '2400x372px • JPEG Qualité 50 %'}
+                  ? '398x398px • 90 DPI • PNG Alpha' 
+                  : '2400x372px • JPEG Qualité 50 %'}
               </p>
             </div>
 
@@ -401,7 +413,7 @@ export default function App() {
                 <span>{outputFormat === 'vignette' ? 'VIGNETTE PNG' : 'BANNIÈRE JPG'}</span>
               </a>
             </div>
-          </div>
+          </div>   
           <div className="mt-8 justify-center"><p className="text-[11px] text-slate-400 font-bold tracking-wide transition-all">Maxime Lyon</p></div>   
         </div>
         <canvas ref={canvasRef} className="hidden" />
